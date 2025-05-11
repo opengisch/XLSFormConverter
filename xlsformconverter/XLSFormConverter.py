@@ -46,6 +46,9 @@ class XLSFormConverter(QObject):
 
     calculate_expressions = {}
 
+    multimedia_info_pushed = False
+    barcode_info_pushed = False
+
     info = pyqtSignal(str)
     warning = pyqtSignal(str)
 
@@ -180,11 +183,33 @@ class XLSFormConverter(QObject):
                     self.calculate_expressions[field_name] = field_calculation
 
             if type_details[0] == "barcode":
-                self.info.emit(
-                    self.tr(
-                        "Barcode functionality is only available through QField; it will be a simple text field in QGIS"
+                if not self.barcode_info_pushed:
+                    self.info.emit(
+                        self.tr(
+                            "Barcode functionality is only available through QField; it will be a simple text field in QGIS"
+                        )
                     )
-                )
+                    self.barcode_info_pushed = True
+            elif (
+                type_details[0] == "image"
+                or type_details[0] == "audio"
+                or type_details[0] == "video"
+                or type_details[0] == "background-audio"
+            ):
+                if type_details[0] == "background-audio":
+                    self.warning.emit(
+                        self.tr(
+                            "Unsupported type background-audio, using audio instead"
+                        )
+                    )
+
+                if not self.multimedia_info_pushed:
+                    self.info.emit(
+                        self.tr(
+                            "Multimedia content can be captured using QField on devices with cameras and microphones; in QGIS, pre-existing files can be selected."
+                        )
+                    )
+                    self.multimedia_info_pushed = True
             elif type_details[0] == "username" or type_details[0] == "email":
                 self.info.emit(
                     self.tr(
