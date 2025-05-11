@@ -43,6 +43,9 @@ class XLSFormConverter(QObject):
     has_relevant = False
     has_choice_filter = False
     has_parameters = False
+    has_constraint = False
+    has_constraint_message = False
+    has_required = False
 
     calculate_expressions = {}
 
@@ -113,6 +116,11 @@ class XLSFormConverter(QObject):
                 "choice_filter" in self.survey_layer.fields().names()
             )
             self.has_parameters = "parameters" in self.survey_layer.fields().names()
+            self.has_constraint = "constraint" in self.survey_layer.fields().names()
+            self.has_constraint_message = (
+                "constraint_message" in self.survey_layer.fields().names()
+            )
+            self.has_required = "required" in self.survey_layer.fields().names()
 
     def create_field(self, feature):
         type_details = str(feature.attribute("type")).split(" ")
@@ -124,16 +132,7 @@ class XLSFormConverter(QObject):
             if feature.attribute("label")
             else field_name
         )
-        field_constraint_expression = (
-            str(feature.attribute("constraint")).strip()
-            if feature.attribute("constraint")
-            else ""
-        )
-        field_constraint_message = (
-            str(feature.attribute("constraint_message")).strip()
-            if feature.attribute("constraint_message")
-            else ""
-        )
+
         field_type = None
         field = None
 
@@ -223,20 +222,52 @@ class XLSFormConverter(QObject):
             field = QgsField(field_name, field_type)
             field.setAlias(field_alias)
 
-        if field_constraint_expression != "":
-            field_constraint_expression = self.convert_expression(
-                field_constraint_expression, dot_field_name=field_name
-            )
-
-            # setup constraints
             field_constraints = QgsFieldConstraints()
-            field_constraints.setConstraintExpression(
-                field_constraint_expression, field_constraint_message
-            )
-            field_constraints.setConstraintStrength(
-                QgsFieldConstraints.ConstraintExpression,
-                QgsFieldConstraints.ConstraintStrengthHard,
-            )
+
+            if self.has_constraint:
+                field_constraint_expression = (
+                    str(feature.attribute("constraint")).strip()
+                    if feature.attribute("constraint")
+                    else ""
+                )
+                if field_constraint_expression != "":
+                    field_constraint_expression = self.convert_expression(
+                        field_constraint_expression, dot_field_name=field_name
+                    )
+
+                    field_constraint_message = (
+                        str(feature.attribute("constraint_message")).strip()
+                        if self.has_constraint_message
+                        and feature.attribute("constraint_message")
+                        else ""
+                    )
+
+                    # setup constraints
+                    field_constraints.setConstraintExpression(
+                        field_constraint_expression, field_constraint_message
+                    )
+                    field_constraints.setConstraintStrength(
+                        QgsFieldConstraints.ConstraintExpression,
+                        QgsFieldConstraints.ConstraintStrengthHard,
+                    )
+
+            if self.has_required:
+                field_required = (
+                    str(feature.attribute("required")).strip().lower()
+                    if feature.attribute("required")
+                    else ""
+                )
+
+                if field_required == "yes":
+                    field_constraints.setConstraint(
+                        QgsFieldConstraints.ConstraintNotNull,
+                        QgsFieldConstraints.ConstraintOriginLayer,
+                    )
+                    field_constraints.setConstraintStrength(
+                        QgsFieldConstraints.ConstraintNotNull,
+                        QgsFieldConstraints.ConstraintStrengthHard,
+                    )
+
             field.setConstraints(field_constraints)
 
         return field
@@ -286,6 +317,17 @@ class XLSFormConverter(QObject):
                     layer_field.constraints().constraintExpression(),
                     layer_field.constraints().constraintDescription(),
                 )
+                if (
+                    layer_field.constraints().constraintStrength(
+                        QgsFieldConstraints.ConstraintNotNull
+                    )
+                    == QgsFieldConstraints.ConstraintStrengthHard
+                ):
+                    layer.setFieldConstraint(
+                        field_index,
+                        QgsFieldConstraints.ConstraintNotNull,
+                        QgsFieldConstraints.ConstraintStrengthHard,
+                    )
 
         layer.setCustomProperty("QFieldSync/cloud_action", "offline")
         layer.setCustomProperty("QFieldSync/action", "offline")
