@@ -48,6 +48,7 @@ class XLSFormConverter(QObject):
     has_required = False
     has_default = False
     has_read_only = False
+    has_trigger = False
 
     calculate_expressions = {}
 
@@ -125,6 +126,7 @@ class XLSFormConverter(QObject):
             self.has_required = "required" in self.survey_layer.fields().names()
             self.has_default = "default" in self.survey_layer.fields().names()
             self.has_read_only = "read_only" in self.survey_layer.fields().names()
+            self.has_trigger = "has_trigger" in self.survey_layer.fields().names()
 
     def create_field(self, feature):
         type_details = str(feature.attribute("type")).split(" ")
@@ -988,6 +990,18 @@ class XLSFormConverter(QObject):
                         current_container[-1].addChildElement(editor_element)
 
                     current_editor_form[-1].setLabelOnTop(field_index, True)
+
+                field_trigger = (
+                    str(feature.attribute("trigger")).strip()
+                    if self.has_trigger and feature.attribute("trigger")
+                    else ""
+                )
+                if field_trigger != "":
+                    self.warning.emit(
+                        "Unsupported trigger option for {}, ignored".format(
+                            feature_name
+                        )
+                    )
 
                 field_calculation = (
                     str(feature.attribute("calculation")).strip()
