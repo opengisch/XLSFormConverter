@@ -36,6 +36,8 @@ class XLSFormConverter(QObject):
     choices_layer = None
     settings_layer = None
 
+    label_field_name = "label"
+
     output_field = None
     output_project = None
 
@@ -57,6 +59,7 @@ class XLSFormConverter(QObject):
 
     info = pyqtSignal(str)
     warning = pyqtSignal(str)
+    error = pyqtSignal(str)
 
     FIELD_TYPES = [
         "integer",
@@ -134,8 +137,8 @@ class XLSFormConverter(QObject):
 
         field_name = str(feature.attribute("name")).strip()
         field_alias = (
-            str(feature.attribute("label")).strip()
-            if feature.attribute("label")
+            str(feature.attribute(self.label_field_name)).strip()
+            if feature.attribute(self.label_field_name)
             else field_name
         )
 
@@ -463,7 +466,7 @@ class XLSFormConverter(QObject):
                         "LayerProviderName": "ogr",
                         "LayerSource": value_layer[0].source(),
                         "Key": "name",
-                        "Value": "label",
+                        "Value": self.label_field_name,
                         "AllowNull": False,
                         "AllowMulti": allow_multi,
                         "FilterExpression": filter_expression,
@@ -488,8 +491,8 @@ class XLSFormConverter(QObject):
                 else ""
             )
             field_alias = (
-                str(feature.attribute("label")).strip()
-                if feature.attribute("label")
+                str(feature.attribute(self.label_field_name)).strip()
+                if feature.attribute(self.label_field_name)
                 else ""
             )
             if calculation != "" and field_alias == "":
@@ -680,7 +683,7 @@ class XLSFormConverter(QObject):
         ms.setExtent(extent)
         ms.writeXml(mapcanvasNode, document)
 
-    def convert(self, output_directory, title=None):
+    def convert(self, output_directory, title=None, language=None):
         if not self.survey_layer:
             return ""
 
@@ -689,27 +692,81 @@ class XLSFormConverter(QObject):
         # Settings handling
         settings_title = ""
         settings_id = ""
+        settings_language = ""
 
         it = self.settings_layer.getFeatures()
-        header_check_done = False
-        form_title_header = "form_title"
-        form_id_header = "form_id"
+        header_checked = False
+        headerless_state = False
+        form_title_index = -1
+        form_id_index = -1
+        default_language_index = -1
         for feature in it:
-            if not header_check_done:
-                header_check_done = True
-                if feature.fields().names()[0] == "Field1":
-                    form_title_header = "Field1"
-                    form_id_header = "Field2"
+            if not header_checked:
+                if headerless_state:
+                    attributes = feature.attributes()
+                    form_title_index = (
+                        attributes.index("form_title")
+                        if "form_title" in attributes
+                        else -1
+                    )
+                    form_id_index = (
+                        attributes.index("form_id") if "form_id" in attributes else -1
+                    )
+                    default_language_index = (
+                        attributes.index("default_language")
+                        if "default_language" in attributes
+                        else -1
+                    )
+                    header_checked = True
                     continue
+                if feature.fields().names()[0] != "Field1":
+                    form_title_index = feature.fields().indexOf("form_title")
+                    form_id_index = feature.fields().indexOf("form_id")
+                    default_language_index = feature.fields().indexOf(
+                        "default_language"
+                    )
+                    header_checked = True
+                    continue
+                else:
+                    headerless_state = True
 
-            if feature.attribute(form_title_header):
-                settings_title = feature.attribute(form_title_header)
-            if feature.attribute(form_id_header):
-                settings_id = feature.attribute(form_id_header)
+            if form_title_index >= 0 and feature.attribute(form_title_index):
+                settings_title = feature.attribute(form_title_index)
+            if form_id_index >= 0 and feature.attribute(form_id_index):
+                settings_id = feature.attribute(form_id_index)
+            if default_language_index >= 0 and feature.attribute(
+                default_language_index
+            ):
+                settings_language = feature.attribute(default_language_index)
             break
 
         if title:
             settings_title = title
+
+        if language:
+            settings_language = language
+
+        self.label_field_name = "label"
+        if settings_language != "":
+            self.label_field_name = "label::{}".format(settings_language)
+            if self.label_field_name not in self.survey_layer.fields().names():
+                self.error.emit(
+                    self.tr(
+                        "Specified {} language not found in the survey spreadsheet, aborting".format(
+                            settings_language
+                        )
+                    )
+                )
+                return
+            elif self.label_field_name not in self.choices_layer.fields().names():
+                self.error.emit(
+                    self.tr(
+                        "Specified {} language not found in the choices spreadsheet, aborting".format(
+                            settings_language
+                        )
+                    )
+                )
+                return
 
         settings_filename = title if title else settings_title
         settings_filename = (
@@ -775,7 +832,7 @@ class XLSFormConverter(QObject):
             # Add pseudo-NULL value
             output_feature = QgsFeature(output_lists_fields)
             output_feature.setAttribute("name", "")
-            output_feature.setAttribute("label", "")
+            output_feature.setAttribute(self.label_field_name, "")
             output_lists_sink.addFeature(output_feature)
 
             for feature in features:
@@ -830,8 +887,8 @@ class XLSFormConverter(QObject):
             feature_type = str(feature.attribute("type")).strip().lower()
             feature_name = str(feature.attribute("name")).strip()
             feature_label = (
-                str(feature.attribute("label")).strip()
-                if feature.attribute("label")
+                str(feature.attribute(self.label_field_name)).strip()
+                if feature.attribute(self.label_field_name)
                 else feature_name
             )
 

@@ -28,6 +28,7 @@ except ImportError:
 class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
     INPUT = "INPUT"
     TITLE = "TITLE"
+    LANGUAGE = "LANGUAGE"
     UPLOAD_TO_QFIELDCLOUD = "UPLOAD_TO_QFIELDCLOUD"
     OUTPUT = "OUTPUT"
 
@@ -67,7 +68,17 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         )
         param.setHelp(
             self.tr(
-                "If left blank, the title within the settings' tab of the input XLSForm file will be used"
+                "If left blank, the title within the settings' tab of the input XLSForm file will be used if available"
+            )
+        )
+        self.addParameter(param)
+
+        param = QgsProcessingParameterString(
+            self.LANGUAGE, self.tr("Project language"), optional=True
+        )
+        param.setHelp(
+            self.tr(
+                "If left blank, the default language within the settings' tab of the input XLSForm file will be used if available"
             )
         )
         self.addParameter(param)
@@ -91,6 +102,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         xlsform_file = self.parameterAsString(parameters, self.INPUT, context)
         title = self.parameterAsString(parameters, self.TITLE, context)
+        language = self.parameterAsString(parameters, self.TITLE, context)
         upload_to_qfieldcloud = self.parameterAsBoolean(
             parameters, self.UPLOAD_TO_QFIELDCLOUD, context
         )
@@ -99,7 +111,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         converter = XLSFormConverter(xlsform_file)
         converter.info.connect(lambda message: feedback.pushInfo(message))
         converter.warning.connect(lambda message: feedback.pushWarning(message))
-        project_file = converter.convert(output_directory, title)
+        project_file = converter.convert(output_directory, title, language)
 
         if upload_to_qfieldcloud:
             for root, dirs, files in os.walk(output_directory):
