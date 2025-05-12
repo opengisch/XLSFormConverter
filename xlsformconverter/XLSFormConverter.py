@@ -47,6 +47,7 @@ class XLSFormConverter(QObject):
     has_constraint_message = False
     has_required = False
     has_default = False
+    has_read_only = False
 
     calculate_expressions = {}
 
@@ -123,6 +124,7 @@ class XLSFormConverter(QObject):
             )
             self.has_required = "required" in self.survey_layer.fields().names()
             self.has_default = "default" in self.survey_layer.fields().names()
+            self.has_read_only = "read_only" in self.survey_layer.fields().names()
 
     def create_field(self, feature):
         type_details = str(feature.attribute("type")).split(" ")
@@ -969,6 +971,15 @@ class XLSFormConverter(QObject):
                             current_layer[-1].setDefaultValueDefinition(
                                 field_index, QgsDefaultValue("@cloud_useremail", False)
                             )
+                    elif self.has_read_only:
+                        field_read_only = (
+                            str(feature.attribute("read_only")).strip().lower()
+                            if feature.attribute("read_only")
+                            else ""
+                        )
+                        current_editor_form[-1].setReadOnly(
+                            field_index, field_read_only == "yes"
+                        )
 
                     if relevant_container:
                         relevant_container.addChildElement(editor_element)
