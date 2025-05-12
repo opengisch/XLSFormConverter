@@ -201,5 +201,5 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         cloud_project = CloudProject({**payload, "local_dir": output_directory})
         cloud_transferrer = CloudTransferrer(nam, cloud_project)
         cloud_transferrer.finished.connect(loop.quit)
-        cloud_transferrer.sync(list(cloud_project.files_to_sync), [], [])
+        cloud_transferrer.sync(list(cloud_project.files_to_sync), [], [], [])
         loop.exec()
