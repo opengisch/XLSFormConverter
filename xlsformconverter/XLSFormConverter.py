@@ -689,7 +689,7 @@ class XLSFormConverter(QObject):
         os.makedirs(os.path.abspath(output_directory), exist_ok=True)
 
         # Settings handling
-        settings_title = ""
+        settings_title = "survey"
         settings_id = ""
         settings_language = ""
 
@@ -883,7 +883,7 @@ class XLSFormConverter(QObject):
             feature_label = (
                 str(feature.attribute(self.label_field_name)).strip()
                 if feature.attribute(self.label_field_name)
-                else feature_name
+                else ""
             )
 
             field_index = current_layer[-1].fields().indexOf(feature_name)
@@ -908,7 +908,7 @@ class XLSFormConverter(QObject):
                         QgsOptionalExpression(QgsExpression(relevant_expression))
                     )
 
-            if feature_type == "begin repeat":
+            if feature_type == "begin repeat" or feature_type == "begin_repeat":
                 current_layer.append(self.create_layer(feature_name))
                 self.output_project.addMapLayer(current_layer[-1])
 
@@ -940,30 +940,32 @@ class XLSFormConverter(QObject):
                     current_editor_form[-2].invisibleRootContainer(),
                 )
                 editor_relation.setLabel(feature_label)
+                editor_relation.setShowLabel(feature_label != "")
                 if relevant_container:
                     relevant_container.addChildElement(editor_relation)
                     current_container[-2].addChildElement(relevant_container)
                 else:
                     current_container[-2].addChildElement(editor_relation)
-            elif feature_type == "end repeat":
+            elif feature_type == "end repeat" or feature_type == "end_repeat":
                 if len(current_layer) > 1:
                     current_container.pop()
                     current_layer[-1].setEditFormConfig(current_editor_form[-1])
                     current_layer.pop()
                     current_editor_form.pop()
-            elif feature_type == "begin group":
+            elif feature_type == "begin group" or feature_type == "begin_group":
                 current_container.append(
                     QgsAttributeEditorContainer(feature_label, current_container[-1])
                 )
                 current_container[-1].setType(
                     Qgis.AttributeEditorContainerType.GroupBox
                 )
+                current_container[-1].setShowLabel(feature_label != "")
                 if relevant_expression != "":
                     current_container[-1].setVisibilityExpression(
                         QgsOptionalExpression(QgsExpression(relevant_expression))
                     )
                 current_container[-2].addChildElement(current_container[-1])
-            elif feature_type == "end group":
+            elif feature_type == "end group" or feature_type == "end_group":
                 if len(current_container) > 1:
                     current_container.pop()
             elif feature_type == "note":
