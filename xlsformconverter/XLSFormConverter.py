@@ -11,6 +11,7 @@ from qgis.core import (
     QgsAttributeEditorTextElement,
     QgsCoordinateReferenceSystem,
     QgsDefaultValue,
+    QgsEditFormConfig,
     QgsEditorWidgetSetup,
     QgsExpression,
     QgsFeature,
@@ -21,6 +22,8 @@ from qgis.core import (
     QgsMapSettings,
     QgsOptionalExpression,
     QgsProject,
+    QgsProperty,
+    QgsPropertyCollection,
     QgsRasterLayer,
     QgsRectangle,
     QgsRelation,
@@ -585,6 +588,26 @@ class XLSFormConverter(QObject):
 
         return fields
 
+    def convert_label_expression(self, original_label_expression):
+        label_expression = original_label_expression
+
+        # ${field} to "field"
+        label_expression = label_expression.replace("'", "\\'")
+        label_expression = re.sub(
+            r"\$\{([^}]+)}", "' || \"\\1\" || '", label_expression
+        )
+        label_expression = "'{}'".format(label_expression)
+
+        label_expression_try = QgsExpression(label_expression)
+        if label_expression_try.hasParserError():
+            self.warning.emit(
+                self.tr(
+                    "Unsupported label expression {}".format(original_label_expression)
+                )
+            )
+
+        return label_expression
+
     def convert_expression(
         self,
         original_expression,
@@ -624,7 +647,7 @@ class XLSFormConverter(QObject):
 
         if use_insert:
             if use_current_value:
-                # ${field} = value to current_value('field') = value
+                # ${field} = value to current_value('field')
                 for (
                     calculate_name,
                     calculate_expression,
@@ -642,7 +665,7 @@ class XLSFormConverter(QObject):
                     r"\$\{([^}]+)}", r"[% current_value('\1') %]", expression
                 )
             else:
-                # ${field} = value to "field" = value
+                # ${field} = value to "field"
                 for (
                     calculate_name,
                     calculate_expression,
@@ -659,10 +682,10 @@ class XLSFormConverter(QObject):
                 expression = re.sub(r"\$\{([^}]+)}", r'[% "\1" %]', expression)
         else:
             if use_current_value:
-                # ${field} = value to current_value('field') = value
+                # ${field} = value to current_value('field')
                 expression = re.sub(r"\$\{([^}]+)}", r"current_value('\1')", expression)
             else:
-                # ${field} = value to "field" = value
+                # ${field} = value to "field"
                 expression = re.sub(r"\$\{([^}]+)}", r'"\1"', expression)
 
         # today() to format_date(now()...)
@@ -670,7 +693,7 @@ class XLSFormConverter(QObject):
             r"today\(\)", r"format_date(now(),'yyyy-MM-dd')", expression
         )
 
-        # not() to !()
+        # selected(1, 2) to 1 = 2
         expression = re.sub(
             r"selected\s*\(\s*(\$\{[^}]+})\,([^)]+)\)", r"\1 = \2", expression
         )
@@ -1014,6 +1037,23 @@ class XLSFormConverter(QObject):
                     editor_element = QgsAttributeEditorField(
                         feature_name, field_index, current_container[-1]
                     )
+
+                    if (
+                        editor_widget.type() != "Hidden"
+                        and feature_label.find("${") >= 0
+                    ):
+                        # Data-defined label
+                        prop = QgsProperty()
+                        prop.setExpressionString(
+                            self.convert_label_expression(feature_label)
+                        )
+                        props = QgsPropertyCollection()
+                        props.setProperty(
+                            QgsEditFormConfig.DataDefinedProperty.Alias, prop
+                        )
+                        current_editor_form[-1].setDataDefinedFieldProperties(
+                            feature_name, props
+                        )
 
                     if feature_type == "calculate":
                         editor_element.setShowLabel(editor_widget.type() != "Hidden")
