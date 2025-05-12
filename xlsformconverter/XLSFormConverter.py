@@ -412,18 +412,12 @@ class XLSFormConverter(QObject):
             )
         elif type_details[0] == "acknowledge":
             editor_widget = QgsEditorWidgetSetup("CheckBox", {})
-        elif type_details[0] == "text" or type_details[0] == "barcode":
+        elif (
+            type_details[0] == "text"
+            or type_details[0] == "barcode"
+            or type_details[0] == "calculate"
+        ):
             editor_widget = QgsEditorWidgetSetup("TextEdit", {})
-        elif type_details[0] == "calculate":
-            field_alias = (
-                str(feature.attribute("label")).strip()
-                if feature.attribute("label")
-                else ""
-            )
-            if field_alias != "":
-                editor_widget = QgsEditorWidgetSetup("TextEdit", {})
-            else:
-                editor_widget = QgsEditorWidgetSetup("Hidden", {})
         elif (
             type_details[0] == "select_one"
             or type_details[0] == "select_multiple"
@@ -480,6 +474,20 @@ class XLSFormConverter(QObject):
         ):
             # Metadata values are hidden
             editor_widget = QgsEditorWidgetSetup("Hidden", {})
+
+        if editor_widget and self.has_calculation:
+            calculation = (
+                str(feature.attribute("calculation")).strip()
+                if feature.attribute("calculation")
+                else ""
+            )
+            field_alias = (
+                str(feature.attribute("label")).strip()
+                if feature.attribute("label")
+                else ""
+            )
+            if calculation != "" and field_alias == "":
+                editor_widget = QgsEditorWidgetSetup("Hidden", {})
 
         return editor_widget
 
