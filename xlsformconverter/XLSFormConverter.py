@@ -604,7 +604,6 @@ class XLSFormConverter(QObject):
         if use_insert:
             if use_current_value:
                 # ${field} = value to current_value('field') = value
-                print(self.calculate_expressions)
                 for (
                     calculate_name,
                     calculate_expression,
@@ -696,13 +695,18 @@ class XLSFormConverter(QObject):
 
         it = self.settings_layer.getFeatures()
         header_checked = False
-        headerless_state = False
         form_title_index = -1
         form_id_index = -1
         default_language_index = -1
         for feature in it:
             if not header_checked:
-                if headerless_state:
+                if feature.fields().names()[0] != "Field1":
+                    form_title_index = feature.fields().indexOf("form_title")
+                    form_id_index = feature.fields().indexOf("form_id")
+                    default_language_index = feature.fields().indexOf(
+                        "default_language"
+                    )
+                else:
                     attributes = feature.attributes()
                     form_title_index = (
                         attributes.index("form_title")
@@ -717,18 +721,8 @@ class XLSFormConverter(QObject):
                         if "default_language" in attributes
                         else -1
                     )
-                    header_checked = True
-                    continue
-                if feature.fields().names()[0] != "Field1":
-                    form_title_index = feature.fields().indexOf("form_title")
-                    form_id_index = feature.fields().indexOf("form_id")
-                    default_language_index = feature.fields().indexOf(
-                        "default_language"
-                    )
-                    header_checked = True
-                    continue
-                else:
-                    headerless_state = True
+                header_checked = True
+                continue
 
             if form_title_index >= 0 and feature.attribute(form_title_index):
                 settings_title = feature.attribute(form_title_index)

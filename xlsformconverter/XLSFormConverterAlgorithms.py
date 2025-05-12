@@ -102,7 +102,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         xlsform_file = self.parameterAsString(parameters, self.INPUT, context)
         title = self.parameterAsString(parameters, self.TITLE, context)
-        language = self.parameterAsString(parameters, self.TITLE, context)
+        language = self.parameterAsString(parameters, self.LANGUAGE, context)
         upload_to_qfieldcloud = self.parameterAsBoolean(
             parameters, self.UPLOAD_TO_QFIELDCLOUD, context
         )
@@ -111,9 +111,10 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         converter = XLSFormConverter(xlsform_file)
         converter.info.connect(lambda message: feedback.pushInfo(message))
         converter.warning.connect(lambda message: feedback.pushWarning(message))
+        converter.error.connect(lambda message: feedback.reportError(message))
         project_file = converter.convert(output_directory, title, language)
 
-        if upload_to_qfieldcloud:
+        if project_file and upload_to_qfieldcloud:
             for root, dirs, files in os.walk(output_directory):
                 for file in files:
                     if file.lower().endswith(".qgs") or file.lower().endswith(".qgz"):
@@ -128,8 +129,8 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
                 if not upload_to_qfieldcloud:
                     break
 
-        if upload_to_qfieldcloud:
-            self.uploadToQFieldCloud(output_directory, project_file, feedback)
+            if upload_to_qfieldcloud:
+                self.uploadToQFieldCloud(output_directory, project_file, feedback)
 
         return {self.OUTPUT: output_directory}
 
