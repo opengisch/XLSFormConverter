@@ -46,6 +46,7 @@ class XLSFormConverter(QObject):
     has_constraint = False
     has_constraint_message = False
     has_required = False
+    has_default = False
 
     calculate_expressions = {}
 
@@ -121,6 +122,7 @@ class XLSFormConverter(QObject):
                 "constraint_message" in self.survey_layer.fields().names()
             )
             self.has_required = "required" in self.survey_layer.fields().names()
+            self.has_default = "default" in self.survey_layer.fields().names()
 
     def create_field(self, feature):
         type_details = str(feature.attribute("type")).split(" ")
@@ -981,6 +983,11 @@ class XLSFormConverter(QObject):
                     if self.has_calculation and feature.attribute("calculation")
                     else ""
                 )
+                field_default = (
+                    str(feature.attribute("default")).strip()
+                    if self.has_default and feature.attribute("default")
+                    else ""
+                )
                 if field_calculation != "":
                     current_layer[-1].setDefaultValueDefinition(
                         field_index,
@@ -989,6 +996,16 @@ class XLSFormConverter(QObject):
                             feature_type == "calculate",
                         ),
                     )
+                elif field_default != "":
+                    is_digit = field_default.replace(".", "", 1).isdigit()
+                    current_layer[-1].setDefaultValueDefinition(
+                        field_index,
+                        QgsDefaultValue(
+                            field_default if is_digit else "'{}'".format(field_default),
+                            False,
+                        ),
+                    )
+
             elif (
                 feature_type == "geopoint"
                 or feature_type == "geotrace"
