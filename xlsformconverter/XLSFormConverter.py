@@ -607,6 +607,21 @@ class XLSFormConverter(QObject):
             r"selected\s*\(\s*(\$\{[^}]+})\,([^)]+)\)", r"\1 = \2", expression
         )
 
+        # regexp(${field}, value) to regexp_match(${field}, value)
+        match = re.search(
+            r"regex\s*\(\s*(\$\{[^}]+})\s*\,\s*'(.+)'\s*\)\s*$", expression
+        )
+        if match:
+            # warning: ugly hack ahead
+            expression = re.sub(
+                r"regex\s*\(\s*(\$\{[^}]+})\s*\,\s*'(.+)'\s*\)\s*$",
+                "regexp_match(\\1, '",
+                expression,
+            )
+            expression = "{}{}')".format(
+                expression, format(match.group(2).replace("\\", "\\\\"))
+            )
+
         if use_insert:
             if use_current_value:
                 # ${field} = value to current_value('field') = value
