@@ -30,6 +30,12 @@ from qgis.core import (
 )
 from qgis.PyQt.QtCore import QMetaType, QObject, QSize, pyqtSignal
 
+MARKDOWN_AVAILABLE = True
+try:
+    import markdown
+except ImportError:
+    MARKDOWN_AVAILABLE = False
+
 
 class XLSFormConverter(QObject):
     survey_layer = None
@@ -972,6 +978,10 @@ class XLSFormConverter(QObject):
                 editor_text = QgsAttributeEditorTextElement(
                     feature_name, current_container[-1]
                 )
+
+                if MARKDOWN_AVAILABLE:
+                    feature_label = markdown.markdown(feature_label)
+
                 editor_text.setText(
                     self.convert_expression(
                         feature_label, use_current_value=True, use_insert=True
