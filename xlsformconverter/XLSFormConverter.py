@@ -142,13 +142,10 @@ class XLSFormConverter(QObject):
             self.survey_type_index = fields.index("type") if "type" in fields else -1
             self.survey_name_index = fields.index("name") if "name" in fields else -1
             self.survey_label_index = fields.index("label") if "label" in fields else -1
-            self.survey_label_index = (
+            self.survey_calculation_index = (
                 fields.index("calculation") if "calculation" in fields else -1
             )
-            self.survey_label_index = (
-                fields.index("relevant") if "relevant" in fields else -1
-            )
-            self.survey_label_index = (
+            self.survey_relevant_index = (
                 fields.index("relevant") if "relevant" in fields else -1
             )
             self.survey_choice_filter_index = (
@@ -281,8 +278,8 @@ class XLSFormConverter(QObject):
 
             if self.survey_calculation_index >= 0 and type_details[0] == "calculate":
                 field_calculation = (
-                    str(feature.attribute(self.survey_calculation_index_index)).strip()
-                    if feature.attribute(self.survey_calculation_index_index)
+                    str(feature.attribute(self.survey_calculation_index)).strip()
+                    if feature.attribute(self.survey_calculation_index)
                     else ""
                 )
                 if field_calculation != "":
