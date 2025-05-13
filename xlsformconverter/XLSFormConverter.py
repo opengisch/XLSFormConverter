@@ -45,21 +45,35 @@ class XLSFormConverter(QObject):
     choices_layer = None
     settings_layer = None
 
-    label_field_name = "label"
-
     output_field = None
     output_project = None
 
-    has_calculation = False
-    has_relevant = False
-    has_choice_filter = False
-    has_parameters = False
-    has_constraint = False
-    has_constraint_message = False
-    has_required = False
-    has_default = False
-    has_read_only = False
-    has_trigger = False
+    label_field_name = "label"
+
+    survey_skip_first = False
+    survey_type_index = -1
+    survey_name_index = -1
+    survey_label_index = -1
+    survey_calculation_index = -1
+    survey_relevant_index = -1
+    survey_choice_filter_index = -1
+    survey_parameters_index = -1
+    survey_constraint_index = -1
+    survey_constraint_message_index = -1
+    survey_required_index = -1
+    survey_default_index = -1
+    survey_read_only_index = -1
+    survey_trigger_index = -1
+
+    choices_skip_first = False
+    choices_list_name_index = -1
+    choices_name_index = -1
+    choices_label_index = -1
+
+    settings_skip_first = False
+    settings_form_title_index = -1
+    settings_form_id_index = -1
+    settings_default_language_index = -1
 
     calculate_expressions = {}
 
@@ -112,42 +126,111 @@ class XLSFormConverter(QObject):
                 "survey",
                 "ogr",
             )
+            if self.survey_layer.isValid():
+                fields = self.survey_layer.fields().names()
+                if fields[0] == "Field1":
+                    self.survey_skip_first = True
+                    fields = self.survey_layer.getFeature(1).attributes()
+
+                self.survey_type_index = (
+                    fields.index("type") if "type" in fields else -1
+                )
+                self.survey_name_index = (
+                    fields.index("name") if "name" in fields else -1
+                )
+                self.survey_label_index = (
+                    fields.index("label") if "label" in fields else -1
+                )
+                self.survey_label_index = (
+                    fields.index("calculation") if "calculation" in fields else -1
+                )
+                self.survey_label_index = (
+                    fields.index("relevant") if "relevant" in fields else -1
+                )
+                self.survey_label_index = (
+                    fields.index("relevant") if "relevant" in fields else -1
+                )
+                self.survey_choice_filter_index = (
+                    fields.index("choice_filter") if "choice_filter" in fields else -1
+                )
+                self.survey_parameters_index = (
+                    fields.index("parameters") if "parameters" in fields else -1
+                )
+                self.survey_constraint_index = (
+                    fields.index("constraint") if "constraint" in fields else -1
+                )
+                self.survey_constraint_message_index = (
+                    fields.index("constraint_message")
+                    if "constraint_message" in fields
+                    else -1
+                )
+                self.survey_required_index = (
+                    fields.index("required") if "required" in fields else -1
+                )
+                self.survey_default_index = (
+                    fields.index("default") if "default" in fields else -1
+                )
+                self.survey_read_only_index = (
+                    fields.index("read_only") if "read_only" in fields else -1
+                )
+                self.survey_trigger_index = (
+                    fields.index("trigger") if "trigger" in fields else -1
+                )
+
             self.choices_layer = QgsVectorLayer(
                 xlsx_form_file
                 + "|layername=choices|option:FIELD_TYPES=STRING|option:HEADERS=FORCE",
                 "options",
                 "ogr",
             )
+            if self.choices_layer.isValid():
+                fields = self.choices_layer.fields().names()
+                if fields[0] == "Field1":
+                    self.choices_skip_first = True
+                    fields = self.choices_layer.getFeature(1).attributes()
+
+                self.choices_list_name_index = (
+                    fields.index("list_name") if "list_name" in fields else -1
+                )
+                self.choices_name_index = (
+                    fields.index("name") if "name" in fields else -1
+                )
+                self.choices_name_index = (
+                    fields.index("label") if "label" in fields else -1
+                )
+
             self.settings_layer = QgsVectorLayer(
                 xlsx_form_file
                 + "|layername=settings|option:FIELD_TYPES=STRING|option:HEADERS=FORCE",
                 "settings",
                 "ogr",
             )
+            if self.settings_layer.isValid():
+                fields = self.settings_layer.fields().names()
+                if fields[0] == "Field1":
+                    self.settings_skip_first = True
+                    fields = self.settings_layer.getFeature(1).attributes()
 
-            self.has_calculation = "calculation" in self.survey_layer.fields().names()
-            self.has_relevant = "relevant" in self.survey_layer.fields().names()
-            self.has_choice_filter = (
-                "choice_filter" in self.survey_layer.fields().names()
-            )
-            self.has_parameters = "parameters" in self.survey_layer.fields().names()
-            self.has_constraint = "constraint" in self.survey_layer.fields().names()
-            self.has_constraint_message = (
-                "constraint_message" in self.survey_layer.fields().names()
-            )
-            self.has_required = "required" in self.survey_layer.fields().names()
-            self.has_default = "default" in self.survey_layer.fields().names()
-            self.has_read_only = "read_only" in self.survey_layer.fields().names()
-            self.has_trigger = "has_trigger" in self.survey_layer.fields().names()
+                self.settings_form_title_index = (
+                    fields.index("form_title") if "form_title" in fields else -1
+                )
+                self.settings_form_title_index = (
+                    fields.index("form_id") if "form_id" in fields else -1
+                )
+                self.settings_default_language_index = (
+                    fields.index("default_language")
+                    if "default_language" in fields
+                    else -1
+                )
 
     def create_field(self, feature):
-        type_details = str(feature.attribute("type")).split(" ")
+        type_details = str(feature.attribute(self.survey_type_index)).split(" ")
         type_details[0] = type_details[0].lower()
 
-        field_name = str(feature.attribute("name")).strip()
+        field_name = str(feature.attribute(self.survey_name_index)).strip()
         field_alias = (
-            str(feature.attribute(self.label_field_name)).strip()
-            if feature.attribute(self.label_field_name)
+            str(feature.attribute(self.survey_label_index)).strip()
+            if feature.attribute(self.survey_label_index)
             else field_name
         )
 
@@ -190,10 +273,10 @@ class XLSFormConverter(QObject):
         ):
             field_type = QMetaType.QString
 
-            if self.has_calculation and type_details[0] == "calculate":
+            if self.survey_calculation_index >= 0 and type_details[0] == "calculate":
                 field_calculation = (
-                    str(feature.attribute("calculation")).strip()
-                    if feature.attribute("calculation")
+                    str(feature.attribute(self.survey_calculation_index_index)).strip()
+                    if feature.attribute(self.survey_calculation_index_index)
                     else ""
                 )
                 if field_calculation != "":
@@ -242,10 +325,10 @@ class XLSFormConverter(QObject):
 
             field_constraints = QgsFieldConstraints()
 
-            if self.has_constraint:
+            if self.survey_constraint_index >= 0:
                 field_constraint_expression = (
-                    str(feature.attribute("constraint")).strip()
-                    if feature.attribute("constraint")
+                    str(feature.attribute(self.survey_constraint_index)).strip()
+                    if feature.attribute(self.survey_constraint_index)
                     else ""
                 )
                 if field_constraint_expression != "":
@@ -254,9 +337,11 @@ class XLSFormConverter(QObject):
                     )
 
                     field_constraint_message = (
-                        str(feature.attribute("constraint_message")).strip()
-                        if self.has_constraint_message
-                        and feature.attribute("constraint_message")
+                        str(
+                            feature.attribute(self.survey_constraint_message_index)
+                        ).strip()
+                        if self.survey_constraint_message_index >= 0
+                        and feature.attribute(self.survey_constraint_message_index)
                         else ""
                     )
 
@@ -269,10 +354,10 @@ class XLSFormConverter(QObject):
                         QgsFieldConstraints.ConstraintStrengthHard,
                     )
 
-            if self.has_required:
+            if self.survey_required_index >= 0:
                 field_required = (
-                    str(feature.attribute("required")).strip().lower()
-                    if feature.attribute("required")
+                    str(feature.attribute(self.survey_required_index)).strip().lower()
+                    if feature.attribute(self.survey_required_index)
                     else ""
                 )
 
@@ -355,7 +440,7 @@ class XLSFormConverter(QObject):
         return layer
 
     def create_editor_widget(self, feature):
-        type_details = str(feature.attribute("type")).split(" ")
+        type_details = str(feature.attribute(self.survey_type_index)).split(" ")
         type_details[0] = type_details[0].lower()
 
         editor_widget = None
@@ -364,8 +449,8 @@ class XLSFormConverter(QObject):
             editor_widget = QgsEditorWidgetSetup("Range", {})
             editor_widget = QgsEditorWidgetSetup("Range", {})
         elif type_details[0] == "range":
-            if self.has_parameters:
-                parameters = feature.attribute("parameters")
+            if self.survey_parameters_index >= 0:
+                parameters = feature.attribute(self.survey_parameters_index)
 
                 start_value = re.search("start=\s*([0-9]+)", parameters)
                 start_value = start_value.group(1) if start_value else 0
@@ -449,8 +534,9 @@ class XLSFormConverter(QObject):
                     or type_details[0] == "select_multiple_from_file"
                 )
                 filter_expression = (
-                    str(feature.attribute("choice_filter")).strip()
-                    if self.has_choice_filter and feature.attribute("choice_filter")
+                    str(feature.attribute(self.survey_choice_filter_index)).strip()
+                    if self.survey_choice_filter_index >= 0
+                    and feature.attribute(self.survey_choice_filter_index)
                     else ""
                 )
                 if filter_expression != "":
@@ -493,15 +579,15 @@ class XLSFormConverter(QObject):
             # Metadata values are hidden
             editor_widget = QgsEditorWidgetSetup("Hidden", {})
 
-        if editor_widget and self.has_calculation:
+        if editor_widget and self.survey_calculation_index >= 0:
             calculation = (
-                str(feature.attribute("calculation")).strip()
-                if feature.attribute("calculation")
+                str(feature.attribute(self.survey_calculation_index)).strip()
+                if feature.attribute(self.survey_calculation_index)
                 else ""
             )
             field_alias = (
-                str(feature.attribute(self.label_field_name)).strip()
-                if feature.attribute(self.label_field_name)
+                str(feature.attribute(self.survey_label_index)).strip()
+                if feature.attribute(self.survey_label_index)
                 else ""
             )
             if calculation != "" and field_alias == "":
@@ -514,17 +600,22 @@ class XLSFormConverter(QObject):
 
         current_child_name = []
         it = self.survey_layer.getFeatures()
+        if self.survey_skip_first:
+            it.nextFeature()
+
         for feature in it:
-            feature_type = str(feature.attribute("type")).strip()
+            feature_type = str(feature.attribute(self.survey_type_index)).strip()
             if feature_type == "begin repeat":
-                current_child_name.append(feature.attribute("name"))
+                current_child_name.append(feature.attribute(self.survey_name_index))
             elif feature_type == "end repeat":
                 current_child_name.pop()
             else:
                 if (
                     len(current_child_name) > 0 and current_child_name[-1] == child_name
                 ) or (len(current_child_name) == 0 and not child_name):
-                    type_details = str(feature.attribute("type")).split(" ")[0]
+                    type_details = str(feature.attribute(self.survey_type_index)).split(
+                        " "
+                    )[0]
                     if type_details == "geopoint":
                         geometry = Qgis.WkbType.Point
                         break
@@ -546,12 +637,15 @@ class XLSFormConverter(QObject):
 
         current_child_name = []
         it = self.survey_layer.getFeatures()
+        if self.survey_skip_first:
+            it.nextFeature()
+
         for feature in it:
-            feature_type = str(feature.attribute("type")).strip()
-            feature_name = str(feature.attribute("name")).strip()
-            if feature_type == "begin repeat":
+            feature_type = str(feature.attribute(self.survey_type_index)).strip()
+            feature_name = str(feature.attribute(self.survey_name_index)).strip()
+            if feature_type == "begin repeat" or feature_type == "begin_repeat":
                 current_child_name.append(feature_name)
-            elif feature_type == "end repeat":
+            elif feature_type == "end repeat" or feature_type == "end_repeat":
                 current_child_name.pop()
             else:
                 if (
@@ -561,7 +655,9 @@ class XLSFormConverter(QObject):
                     if field:
                         fields.append(field)
                     else:
-                        type_details = str(feature.attribute("type")).split(" ")
+                        type_details = str(
+                            feature.attribute(self.survey_type_index)
+                        ).split(" ")
                         type_details[0] = type_details[0].lower()
                         if type_details[0] in self.FIELD_TYPES:
                             self.warning.emit(
@@ -575,7 +671,10 @@ class XLSFormConverter(QObject):
                         elif type_details[0] in self.METADATA_TYPES:
                             if (
                                 not type_details[0] == "end"
-                                or feature.attribute("type").strip().lower() == "end"
+                                or feature.attribute(self.survey_type_index)
+                                .strip()
+                                .lower()
+                                == "end"
                             ):
                                 self.warning.emit(
                                     self.tr(
@@ -737,46 +836,27 @@ class XLSFormConverter(QObject):
         settings_id = ""
         settings_language = ""
 
-        it = self.settings_layer.getFeatures()
-        header_checked = False
-        form_title_index = -1
-        form_id_index = -1
-        default_language_index = -1
-        for feature in it:
-            if not header_checked:
-                if feature.fields().names()[0] != "Field1":
-                    form_title_index = feature.fields().indexOf("form_title")
-                    form_id_index = feature.fields().indexOf("form_id")
-                    default_language_index = feature.fields().indexOf(
-                        "default_language"
-                    )
-                else:
-                    attributes = feature.attributes()
-                    form_title_index = (
-                        attributes.index("form_title")
-                        if "form_title" in attributes
-                        else -1
-                    )
-                    form_id_index = (
-                        attributes.index("form_id") if "form_id" in attributes else -1
-                    )
-                    default_language_index = (
-                        attributes.index("default_language")
-                        if "default_language" in attributes
-                        else -1
-                    )
-                header_checked = True
-                continue
+        if self.settings_layer.isValid():
+            it = self.settings_layer.getFeatures()
+            if self.settings_skip_first:
+                it.nextFeature()
 
-            if form_title_index >= 0 and feature.attribute(form_title_index):
-                settings_title = feature.attribute(form_title_index)
-            if form_id_index >= 0 and feature.attribute(form_id_index):
-                settings_id = feature.attribute(form_id_index)
-            if default_language_index >= 0 and feature.attribute(
-                default_language_index
-            ):
-                settings_language = feature.attribute(default_language_index)
-            break
+            for feature in it:
+                if self.settings_form_title_index >= 0 and feature.attribute(
+                    self.settings_form_title_index
+                ):
+                    settings_title = feature.attribute(self.settings_form_title_index)
+                if self.settings_form_id_index >= 0 and feature.attribute(
+                    self.settings_form_id_index
+                ):
+                    settings_id = feature.attribute(self.settings_form_id_index)
+                if self.settings_default_language_index >= 0 and feature.attribute(
+                    self.settings_default_language_index
+                ):
+                    settings_language = feature.attribute(
+                        self.settings_default_language_index
+                    )
+                break
 
         if title:
             settings_title = title
@@ -787,7 +867,17 @@ class XLSFormConverter(QObject):
         self.label_field_name = "label"
         if settings_language != "":
             self.label_field_name = "label::{}".format(settings_language)
-            if self.label_field_name not in self.survey_layer.fields().names():
+
+            fields = self.survey_layer.fields().names()
+            if fields[0] == "Field1":
+                fields = self.survey_layer.getFeature(1).attributes()
+
+            self.survey_label_index = (
+                fields.index(self.label_field_name)
+                if self.label_field_name in fields
+                else -1
+            )
+            if self.survey_label_index == -1:
                 self.error.emit(
                     self.tr(
                         "Specified {} language not found in the survey spreadsheet, aborting".format(
@@ -796,15 +886,26 @@ class XLSFormConverter(QObject):
                     )
                 )
                 return
-            elif self.label_field_name not in self.choices_layer.fields().names():
-                self.error.emit(
-                    self.tr(
-                        "Specified {} language not found in the choices spreadsheet, aborting".format(
-                            settings_language
+
+            if self.choices_layer.isValid():
+                fields = self.choices_layer.fields().names()
+                if fields[0] == "Field1":
+                    fields = self.choices_layer.getFeature(1).attributes()
+
+                self.choices_label_index = (
+                    fields.index(self.label_field_name)
+                    if self.label_field_name in fields
+                    else -1
+                )
+                if self.choices_label_index == -1:
+                    self.error.emit(
+                        self.tr(
+                            "Specified {} language not found in the choices spreadsheet, aborting".format(
+                                settings_language
+                            )
                         )
                     )
-                )
-                return
+                    return
 
         settings_filename = title if title else settings_title
         settings_filename = (
@@ -839,8 +940,11 @@ class XLSFormConverter(QObject):
         lists = {}
 
         it = self.choices_layer.getFeatures()
+        if self.choices_skip_first:
+            it.nextFeature()
+
         for feature in it:
-            list_name = feature.attribute("list_name")
+            list_name = feature.attribute(self.choices_list_name_index)
             if not list_name:
                 continue
 
@@ -877,7 +981,7 @@ class XLSFormConverter(QObject):
                 output_feature = QgsFeature(output_lists_fields)
                 for field_name in output_lists_fields.names():
                     attribute_value = feature.attribute(field_name)
-                    if field_name == "label":
+                    if field_name == self.label_field_name:
                         html_fragment = html.fromstring(str(attribute_value))
                         attribute_value = html_fragment.text_content()
                     output_feature.setAttribute(field_name, attribute_value)
@@ -918,15 +1022,20 @@ class XLSFormConverter(QObject):
         relation_context = QgsRelationContext(self.output_project)
 
         it = self.survey_layer.getFeatures()
+        if self.survey_skip_first:
+            it.nextFeature()
+
         for feature in it:
-            if not feature.attribute("type"):
+            if not feature.attribute(self.survey_type_index):
                 continue
 
-            feature_type = str(feature.attribute("type")).strip().lower()
-            feature_name = str(feature.attribute("name")).strip()
+            feature_type = (
+                str(feature.attribute(self.survey_type_index)).strip().lower()
+            )
+            feature_name = str(feature.attribute(self.survey_name_index)).strip()
             feature_label = (
-                str(feature.attribute(self.label_field_name)).strip()
-                if feature.attribute(self.label_field_name)
+                str(feature.attribute(self.survey_label_index)).strip()
+                if feature.attribute(self.survey_label_index)
                 else ""
             )
 
@@ -934,8 +1043,9 @@ class XLSFormConverter(QObject):
 
             relevant_container = None
             relevant_expression = (
-                str(feature.attribute("relevant")).strip()
-                if self.has_relevant and feature.attribute("relevant")
+                str(feature.attribute(self.survey_relevant_index)).strip()
+                if self.survey_relevant_index >= 0
+                and feature.attribute(self.survey_relevant_index)
                 else ""
             )
             if relevant_expression != "":
@@ -1091,10 +1201,12 @@ class XLSFormConverter(QObject):
                             current_layer[-1].setDefaultValueDefinition(
                                 field_index, QgsDefaultValue("@cloud_useremail", False)
                             )
-                    elif self.has_read_only:
+                    elif self.survey_read_only_index >= 0:
                         field_read_only = (
-                            str(feature.attribute("read_only")).strip().lower()
-                            if feature.attribute("read_only")
+                            str(feature.attribute(self.survey_read_only_index))
+                            .strip()
+                            .lower()
+                            if feature.attribute(self.survey_read_only_index)
                             else ""
                         )
                         current_editor_form[-1].setReadOnly(
@@ -1110,8 +1222,9 @@ class XLSFormConverter(QObject):
                     current_editor_form[-1].setLabelOnTop(field_index, True)
 
                 field_trigger = (
-                    str(feature.attribute("trigger")).strip()
-                    if self.has_trigger and feature.attribute("trigger")
+                    str(feature.attribute(self.survey_trigger_index)).strip()
+                    if self.survey_trigger_index >= 0
+                    and feature.attribute(self.survey_trigger_index)
                     else ""
                 )
                 if field_trigger != "":
@@ -1122,13 +1235,15 @@ class XLSFormConverter(QObject):
                     )
 
                 field_calculation = (
-                    str(feature.attribute("calculation")).strip()
-                    if self.has_calculation and feature.attribute("calculation")
+                    str(feature.attribute(self.survey_calculation_index)).strip()
+                    if self.survey_calculation_index >= 0
+                    and feature.attribute(self.survey_calculation_index)
                     else ""
                 )
                 field_default = (
-                    str(feature.attribute("default")).strip()
-                    if self.has_default and feature.attribute("default")
+                    str(feature.attribute(self.survey_default_index)).strip()
+                    if self.survey_default_index >= 0
+                    and feature.attribute(self.survey_default_index)
                     else ""
                 )
                 if field_calculation != "":
@@ -1156,7 +1271,7 @@ class XLSFormConverter(QObject):
             ):
                 continue
             else:
-                type_details = str(feature.attribute("type")).split(" ")
+                type_details = str(feature.attribute(self.survey_type_index)).split(" ")
                 type_details[0] = type_details[0].lower()
                 if (
                     type_details[0] not in self.FIELD_TYPES
