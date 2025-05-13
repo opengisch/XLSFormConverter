@@ -119,109 +119,110 @@ class XLSFormConverter(QObject):
 
     def __init__(self, xlsx_form_file):
         QObject.__init__(self)
-        if os.path.isfile(xlsx_form_file):
-            self.survey_layer = QgsVectorLayer(
-                xlsx_form_file
-                + "|layername=survey|option:FIELD_TYPES=STRING|option:HEADERS=FORCE",
-                "survey",
-                "ogr",
+        if not os.path.isfile(xlsx_form_file):
+            return
+
+        self.survey_layer = QgsVectorLayer(
+            xlsx_form_file
+            + "|layername=survey|option:FIELD_TYPES=STRING|option:HEADERS=FORCE",
+            "survey",
+            "ogr",
+        )
+        if self.survey_layer.isValid():
+            fields = self.survey_layer.fields().names()
+            if fields[0] == "Field1":
+                self.survey_skip_first = True
+                fields = self.survey_layer.getFeature(1).attributes()
+
+            self.survey_type_index = fields.index("type") if "type" in fields else -1
+            self.survey_name_index = fields.index("name") if "name" in fields else -1
+            self.survey_label_index = fields.index("label") if "label" in fields else -1
+            self.survey_label_index = (
+                fields.index("calculation") if "calculation" in fields else -1
             )
-            if self.survey_layer.isValid():
-                fields = self.survey_layer.fields().names()
-                if fields[0] == "Field1":
-                    self.survey_skip_first = True
-                    fields = self.survey_layer.getFeature(1).attributes()
-
-                self.survey_type_index = (
-                    fields.index("type") if "type" in fields else -1
-                )
-                self.survey_name_index = (
-                    fields.index("name") if "name" in fields else -1
-                )
-                self.survey_label_index = (
-                    fields.index("label") if "label" in fields else -1
-                )
-                self.survey_label_index = (
-                    fields.index("calculation") if "calculation" in fields else -1
-                )
-                self.survey_label_index = (
-                    fields.index("relevant") if "relevant" in fields else -1
-                )
-                self.survey_label_index = (
-                    fields.index("relevant") if "relevant" in fields else -1
-                )
-                self.survey_choice_filter_index = (
-                    fields.index("choice_filter") if "choice_filter" in fields else -1
-                )
-                self.survey_parameters_index = (
-                    fields.index("parameters") if "parameters" in fields else -1
-                )
-                self.survey_constraint_index = (
-                    fields.index("constraint") if "constraint" in fields else -1
-                )
-                self.survey_constraint_message_index = (
-                    fields.index("constraint_message")
-                    if "constraint_message" in fields
-                    else -1
-                )
-                self.survey_required_index = (
-                    fields.index("required") if "required" in fields else -1
-                )
-                self.survey_default_index = (
-                    fields.index("default") if "default" in fields else -1
-                )
-                self.survey_read_only_index = (
-                    fields.index("read_only") if "read_only" in fields else -1
-                )
-                self.survey_trigger_index = (
-                    fields.index("trigger") if "trigger" in fields else -1
-                )
-
-            self.choices_layer = QgsVectorLayer(
-                xlsx_form_file
-                + "|layername=choices|option:FIELD_TYPES=STRING|option:HEADERS=FORCE",
-                "options",
-                "ogr",
+            self.survey_label_index = (
+                fields.index("relevant") if "relevant" in fields else -1
             )
-            if self.choices_layer.isValid():
-                fields = self.choices_layer.fields().names()
-                if fields[0] == "Field1":
-                    self.choices_skip_first = True
-                    fields = self.choices_layer.getFeature(1).attributes()
-
-                self.choices_list_name_index = (
-                    fields.index("list_name") if "list_name" in fields else -1
-                )
-                self.choices_name_index = (
-                    fields.index("name") if "name" in fields else -1
-                )
-                self.choices_name_index = (
-                    fields.index("label") if "label" in fields else -1
-                )
-
-            self.settings_layer = QgsVectorLayer(
-                xlsx_form_file
-                + "|layername=settings|option:FIELD_TYPES=STRING|option:HEADERS=FORCE",
-                "settings",
-                "ogr",
+            self.survey_label_index = (
+                fields.index("relevant") if "relevant" in fields else -1
             )
-            if self.settings_layer.isValid():
-                fields = self.settings_layer.fields().names()
-                if fields[0] == "Field1":
-                    self.settings_skip_first = True
-                    fields = self.settings_layer.getFeature(1).attributes()
+            self.survey_choice_filter_index = (
+                fields.index("choice_filter") if "choice_filter" in fields else -1
+            )
+            self.survey_parameters_index = (
+                fields.index("parameters") if "parameters" in fields else -1
+            )
+            self.survey_constraint_index = (
+                fields.index("constraint") if "constraint" in fields else -1
+            )
+            self.survey_constraint_message_index = (
+                fields.index("constraint_message")
+                if "constraint_message" in fields
+                else -1
+            )
+            self.survey_required_index = (
+                fields.index("required") if "required" in fields else -1
+            )
+            self.survey_default_index = (
+                fields.index("default") if "default" in fields else -1
+            )
+            self.survey_read_only_index = (
+                fields.index("read_only") if "read_only" in fields else -1
+            )
+            self.survey_trigger_index = (
+                fields.index("trigger") if "trigger" in fields else -1
+            )
 
-                self.settings_form_title_index = (
-                    fields.index("form_title") if "form_title" in fields else -1
-                )
-                self.settings_form_title_index = (
-                    fields.index("form_id") if "form_id" in fields else -1
-                )
-                self.settings_default_language_index = (
-                    fields.index("default_language")
-                    if "default_language" in fields
-                    else -1
-                )
+        self.choices_layer = QgsVectorLayer(
+            xlsx_form_file
+            + "|layername=choices|option:FIELD_TYPES=STRING|option:HEADERS=FORCE",
+            "options",
+            "ogr",
+        )
+        if self.choices_layer.isValid():
+            fields = self.choices_layer.fields().names()
+            if fields[0] == "Field1":
+                self.choices_skip_first = True
+                fields = self.choices_layer.getFeature(1).attributes()
+
+            self.choices_list_name_index = (
+                fields.index("list_name") if "list_name" in fields else -1
+            )
+            self.choices_name_index = fields.index("name") if "name" in fields else -1
+            self.choices_name_index = fields.index("label") if "label" in fields else -1
+
+        self.settings_layer = QgsVectorLayer(
+            xlsx_form_file
+            + "|layername=settings|option:FIELD_TYPES=STRING|option:HEADERS=FORCE",
+            "settings",
+            "ogr",
+        )
+        if self.settings_layer.isValid():
+            fields = self.settings_layer.fields().names()
+            if fields[0] == "Field1":
+                self.settings_skip_first = True
+                fields = self.settings_layer.getFeature(1).attributes()
+
+            self.settings_form_title_index = (
+                fields.index("form_title") if "form_title" in fields else -1
+            )
+            self.settings_form_title_index = (
+                fields.index("form_id") if "form_id" in fields else -1
+            )
+            self.settings_default_language_index = (
+                fields.index("default_language") if "default_language" in fields else -1
+            )
+
+    def is_valid(self):
+        # Missing the one layer that must be available
+        if not self.survey_layer or not self.survey_layer.isValid():
+            return False
+
+        # Missing the two basic parameters that must be present within the survey layer
+        if self.survey_type_index == -1 or self.survey_name_index == -1:
+            return False
+
+        return True
 
     def create_field(self, feature):
         type_details = str(feature.attribute(self.survey_type_index)).split(" ")
@@ -864,48 +865,49 @@ class XLSFormConverter(QObject):
         if language:
             settings_language = language
 
-        self.label_field_name = "label"
         if settings_language != "":
             self.label_field_name = "label::{}".format(settings_language)
+        else:
+            self.label_field_name = "label"
 
-            fields = self.survey_layer.fields().names()
+        fields = self.survey_layer.fields().names()
+        if fields[0] == "Field1":
+            fields = self.survey_layer.getFeature(1).attributes()
+
+        self.survey_label_index = (
+            fields.index(self.label_field_name)
+            if self.label_field_name in fields
+            else -1
+        )
+        if self.survey_label_index == -1:
+            self.error.emit(
+                self.tr(
+                    "{} parameter not found in the survey layer, aborting".format(
+                        self.label_field_name
+                    )
+                )
+            )
+            return
+
+        if self.choices_layer.isValid():
+            fields = self.choices_layer.fields().names()
             if fields[0] == "Field1":
-                fields = self.survey_layer.getFeature(1).attributes()
+                fields = self.choices_layer.getFeature(1).attributes()
 
-            self.survey_label_index = (
+            self.choices_label_index = (
                 fields.index(self.label_field_name)
                 if self.label_field_name in fields
                 else -1
             )
-            if self.survey_label_index == -1:
+            if self.choices_label_index == -1:
                 self.error.emit(
                     self.tr(
-                        "Specified {} language not found in the survey spreadsheet, aborting".format(
-                            settings_language
+                        "{} parameter not found in the choices layer, aborting".format(
+                            self.label_field_name
                         )
                     )
                 )
                 return
-
-            if self.choices_layer.isValid():
-                fields = self.choices_layer.fields().names()
-                if fields[0] == "Field1":
-                    fields = self.choices_layer.getFeature(1).attributes()
-
-                self.choices_label_index = (
-                    fields.index(self.label_field_name)
-                    if self.label_field_name in fields
-                    else -1
-                )
-                if self.choices_label_index == -1:
-                    self.error.emit(
-                        self.tr(
-                            "Specified {} language not found in the choices spreadsheet, aborting".format(
-                                settings_language
-                            )
-                        )
-                    )
-                    return
 
         settings_filename = title if title else settings_title
         settings_filename = (

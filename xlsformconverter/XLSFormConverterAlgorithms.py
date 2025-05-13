@@ -109,6 +109,10 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         output_directory = self.parameterAsString(parameters, self.OUTPUT, context)
 
         converter = XLSFormConverter(xlsform_file)
+        if not converter.is_valid():
+            feedback.reportError(self.tr("The provided XLSForm is invalid, aborting."))
+            return {}
+
         converter.info.connect(lambda message: feedback.pushInfo(message))
         converter.warning.connect(lambda message: feedback.pushWarning(message))
         converter.error.connect(lambda message: feedback.reportError(message))
