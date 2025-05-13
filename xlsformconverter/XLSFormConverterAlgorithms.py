@@ -4,6 +4,7 @@ from qgis.core import (
     Qgis,
     QgsProcessingAlgorithm,
     QgsProcessingParameterBoolean,
+    QgsProcessingParameterEnum,
     QgsProcessingParameterFile,
     QgsProcessingParameterFolderDestination,
     QgsProcessingParameterString,
@@ -29,6 +30,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
     INPUT = "INPUT"
     TITLE = "TITLE"
     LANGUAGE = "LANGUAGE"
+    BASEMAP = "BASEMAP"
     UPLOAD_TO_QFIELDCLOUD = "UPLOAD_TO_QFIELDCLOUD"
     OUTPUT = "OUTPUT"
 
@@ -84,6 +86,18 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(param)
 
         self.addParameter(
+            QgsProcessingParameterEnum(
+                self.BASEMAP,
+                self.tr("Project basemap"),
+                [
+                    self.tr("OpenStreetMap"),
+                    self.tr("Humanitarian OpenStreetMap Team (HOT)"),
+                ],
+                defaultValue=0,
+            )
+        )
+
+        self.addParameter(
             QgsProcessingParameterBoolean(
                 self.UPLOAD_TO_QFIELDCLOUD,
                 self.tr("Upload generated project to QFieldCloud"),
@@ -103,6 +117,12 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         xlsform_file = self.parameterAsString(parameters, self.INPUT, context)
         title = self.parameterAsString(parameters, self.TITLE, context)
         language = self.parameterAsString(parameters, self.LANGUAGE, context)
+
+        basemap = "OpenStreetMap"
+        basemap_index = self.parameterAsEnum(parameters, self.BASEMAP, context)
+        if basemap_index == 1:
+            basemap = "HOT"
+
         upload_to_qfieldcloud = self.parameterAsBoolean(
             parameters, self.UPLOAD_TO_QFIELDCLOUD, context
         )
@@ -116,7 +136,8 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         converter.info.connect(lambda message: feedback.pushInfo(message))
         converter.warning.connect(lambda message: feedback.pushWarning(message))
         converter.error.connect(lambda message: feedback.reportError(message))
-        project_file = converter.convert(output_directory, title, language)
+
+        project_file = converter.convert(output_directory, title, language, basemap)
 
         if project_file and upload_to_qfieldcloud:
             for root, dirs, files in os.walk(output_directory):

@@ -117,6 +117,11 @@ class XLSFormConverter(QObject):
         "audit",
     ]
 
+    BASEMAPS = {
+        "OpenStreetMap": "type=xyz&tilePixelRatio=1&url=https://tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0&crs=EPSG3857",
+        "HOT": "type=xyz&tilePixelRatio=1&url=https://a.tile.openstreetmap.fr/hot/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0&crs=EPSG3857",
+    }
+
     def __init__(self, xlsx_form_file):
         QObject.__init__(self)
         if not os.path.isfile(xlsx_form_file):
@@ -826,7 +831,9 @@ class XLSFormConverter(QObject):
         ms.setExtent(extent)
         ms.writeXml(mapcanvasNode, document)
 
-    def convert(self, output_directory, title=None, language=None):
+    def convert(
+        self, output_directory, title=None, language=None, basemap="OpenStreetMap"
+    ):
         if not self.survey_layer:
             return ""
 
@@ -928,13 +935,14 @@ class XLSFormConverter(QObject):
         )
         self.output_project = QgsProject()
 
-        base_layer = QgsRasterLayer(
-            "type=xyz&tilePixelRatio=1&url=https://tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0&crs=EPSG3857",
-            "OpenStreetMap",
-            "wms",
-        )
-        self.output_project.setCrs(base_layer.crs())
-        self.output_project.addMapLayer(base_layer)
+        if basemap in self.BASEMAPS:
+            base_layer = QgsRasterLayer(
+                self.BASEMAPS[basemap],
+                basemap,
+                "wms",
+            )
+            self.output_project.setCrs(base_layer.crs())
+            self.output_project.addMapLayer(base_layer)
 
         # Choices handling
         output_lists_fields = self.choices_layer.fields()
