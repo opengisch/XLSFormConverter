@@ -604,7 +604,8 @@ class XLSFormConverter(QObject):
         current_child_name = []
         it = self.survey_layer.getFeatures()
         if self.survey_skip_first:
-            it.nextFeature()
+            feature = QgsFeature()
+            it.nextFeature(feature)
 
         for feature in it:
             feature_type = str(feature.attribute(self.survey_type_index)).strip()
@@ -641,7 +642,8 @@ class XLSFormConverter(QObject):
         current_child_name = []
         it = self.survey_layer.getFeatures()
         if self.survey_skip_first:
-            it.nextFeature()
+            feature = QgsFeature()
+            it.nextFeature(feature)
 
         for feature in it:
             feature_type = str(feature.attribute(self.survey_type_index)).strip()
@@ -844,7 +846,8 @@ class XLSFormConverter(QObject):
         if self.settings_layer.isValid():
             it = self.settings_layer.getFeatures()
             if self.settings_skip_first:
-                it.nextFeature()
+                feature = QgsFeature()
+                it.nextFeature(feature)
 
             for feature in it:
                 if self.settings_form_title_index >= 0 and feature.attribute(
@@ -948,7 +951,8 @@ class XLSFormConverter(QObject):
 
         it = self.choices_layer.getFeatures()
         if self.choices_skip_first:
-            it.nextFeature()
+            feature = QgsFeature()
+            it.nextFeature(feature)
 
         for feature in it:
             list_name = feature.attribute(self.choices_list_name_index)
@@ -1030,7 +1034,8 @@ class XLSFormConverter(QObject):
 
         it = self.survey_layer.getFeatures()
         if self.survey_skip_first:
-            it.nextFeature()
+            feature = QgsFeature()
+            it.nextFeature(feature)
 
         for feature in it:
             if not feature.attribute(self.survey_type_index):

@@ -54,7 +54,9 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-            'Converts an XLSForm file into a QGIS project with prepared layers and feature forms.\n\nThe algorithm conveniently offers way to upload the generated project directly to <a href="https://qfield.cloud">QFieldCloud</a> provided the QFieldSync plugin is installed.'
+            '<a href="https://xlsform.org/en/">XLSForm</a> is a form standard created to help simplify the authoring of forms using a spreadsheet program such as LibreOffice Calc or Microsoft Excel. They are simple to get started with but allow for the authoring of complex forms by someone familiar with the syntax.\n\n'
+            "This algorithm converts a XLSForm file into a QGIS project containing a survey layer with a feature form reflecting the authored form. This can facilitate the creation of complex feature forms through a simple, well-known format.\n\n"
+            'An option to upload the generated project directly to <a href="https://qfield.cloud">QFieldCloud</a> facilitates its deployment to <a href="https://qfield.org/">QField</a>, an open-source fieldwork app for geospatial data collection built on top of QGIS. A deployment through QFieldCloud enables multiple collaborators to seamlessly work on the same survey layer. This option works alongside the QFieldSync plugin.'
         )
 
     def icon(self):
