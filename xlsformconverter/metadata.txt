@@ -1,19 +1,19 @@
 [general]
 name=XLSForm Converter
-qgisMinimumVersion=3.42
+qgisMinimumVersion=3.40
 description=Converts an XLSForm file into a QGIS project with prepared layers and feature forms.
-version=1.0.5
-author=Mathieu Pellerin
-email=mathieu@opengis.ch
+version=1.0.0
+author=OPENGIS.ch
+email=info@opengis.ch
 
 about=Converts an XLSForm file into a QGIS project with prepared layers and feature forms.
 tags=xlsform,cloud,qfieldcloud,qfield,form,survey
 
-tracker=https://github.com/nirvn/GamepadNavigation/issues
-repository=https://github.com/nirvn/GamepadNavigation
-homepage=https://github.com/nirvn/GamepadNavigation
+tracker=https://github.com/opengisch/XLSFormConverter
+repository=https://github.com/opengisch/XLSFormConverter
+homepage=https://github.com/opengisch/XLSFormConverter
 
-changelog=v0.1 - Initial release
+changelog=v1.0 - Initial release
 
 category=form
 icon=icon.svg
