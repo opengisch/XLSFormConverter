@@ -6,7 +6,13 @@ version=1.0.0
 author=OPENGIS.ch
 email=info@opengis.ch
 
-about=Converts an XLSForm file into a QGIS project with prepared layers and feature forms.
+about=
+    XLSForm is a form standard created to help simplify the authoring of forms using a spreadsheet program such as LibreOffice Calc or Microsoft Excel. They are simple to get started with but allow for the authoring of complex forms by someone familiar with the syntax.
+
+    The plugin algorithm converts a XLSForm file into a QGIS project containing a survey layer with a feature form reflecting the authored form. This can facilitate the creation of complex feature forms through a simple, well-known format.
+
+    An option to upload the generated project directly to QFieldCloud facilitates its deployment to QField, an open-source fieldwork app for geospatial data collection built on top of QGIS. A deployment through QFieldCloud enables multiple collaborators to seamlessly work on the same survey layer. This option works alongside the QFieldSync plugin.
+
 tags=xlsform,cloud,qfieldcloud,qfield,form,survey
 
 tracker=https://github.com/opengisch/XLSFormConverter
