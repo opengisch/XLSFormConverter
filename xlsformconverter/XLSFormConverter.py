@@ -753,6 +753,12 @@ class XLSFormConverter(QObject):
                 expression, format(match.group(2).replace("\\", "\\\\"))
             )
 
+            expression = re.sub(
+                r"([^\[])\[:(digit|upper|lower|alpha|alnum|punct|blank|word):\]([^\]])",
+                r"\1[[:\2:]]\3",
+                expression,
+            )
+
         if use_insert:
             if use_current_value:
                 # ${field} = value to current_value('field')
