@@ -190,6 +190,10 @@ class XLSFormConverter(QObject):
             self.choices_list_name_index = (
                 fields.index("list_name") if "list_name" in fields else -1
             )
+            if self.choices_list_name_index == -1:
+                self.choices_list_name_index = (
+                    fields.index("list name") if "list name" in fields else -1
+                )
             self.choices_name_index = fields.index("name") if "name" in fields else -1
             self.choices_name_index = fields.index("label") if "label" in fields else -1
 
@@ -208,7 +212,7 @@ class XLSFormConverter(QObject):
             self.settings_form_title_index = (
                 fields.index("form_title") if "form_title" in fields else -1
             )
-            self.settings_form_title_index = (
+            self.settings_form_id_index = (
                 fields.index("form_id") if "form_id" in fields else -1
             )
             self.settings_default_language_index = (
@@ -846,9 +850,13 @@ class XLSFormConverter(QObject):
         if self.settings_layer.isValid():
             it = self.settings_layer.getFeatures()
             if self.settings_skip_first:
+                print("in")
                 feature = QgsFeature()
                 it.nextFeature(feature)
 
+            print("arg")
+            print(self.settings_form_id_index)
+            print("arg")
             for feature in it:
                 if self.settings_form_title_index >= 0 and feature.attribute(
                     self.settings_form_title_index
@@ -945,8 +953,14 @@ class XLSFormConverter(QObject):
             self.output_project.addMapLayer(base_layer)
 
         # Choices handling
-        output_lists_fields = self.choices_layer.fields()
-        output_lists_fields.remove(self.choices_layer.fields().indexOf("list_name"))
+        output_lists_fields = QgsFields()
+        output_lists_field_names = self.choices_layer.fields().names()
+        if self.choices_skip_first:
+            output_lists_field_names = self.choices_layer.getFeature(1).attributes()
+
+        for field_name in output_lists_field_names:
+            output_lists_fields.append(QgsField(field_name, QMetaType.QString))
+
         lists = {}
 
         it = self.choices_layer.getFeatures()
@@ -990,8 +1004,10 @@ class XLSFormConverter(QObject):
 
             for feature in features:
                 output_feature = QgsFeature(output_lists_fields)
-                for field_name in output_lists_fields.names():
-                    attribute_value = feature.attribute(field_name)
+                for field_name in output_lists_field_names:
+                    attribute_value = feature.attribute(
+                        output_lists_field_names.index(field_name)
+                    )
                     if field_name == self.label_field_name:
                         html_fragment = html.fromstring(str(attribute_value))
                         attribute_value = html_fragment.text_content()
