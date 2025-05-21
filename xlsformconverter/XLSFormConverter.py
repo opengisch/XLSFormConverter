@@ -900,6 +900,22 @@ class XLSFormConverter(QObject):
             if self.label_field_name in fields
             else -1
         )
+        if self.survey_label_index == -1 and self.label_field_name != "label":
+            self.label_field_name = "label"
+            self.survey_label_index = (
+                fields.index(self.label_field_name)
+                if self.label_field_name in fields
+                else -1
+            )
+            if self.survey_label_index >= 0:
+                self.warning.emit(
+                    self.tr(
+                        "label::{} parameter not found in the survey layer, falling back to label".format(
+                            settings_language
+                        )
+                    )
+                )
+
         if self.survey_label_index == -1:
             self.error.emit(
                 self.tr(
