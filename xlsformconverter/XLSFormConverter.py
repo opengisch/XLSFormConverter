@@ -530,7 +530,6 @@ class XLSFormConverter(QObject):
             type_details[0] == "text"
             or type_details[0] == "barcode"
             or type_details[0] == "calculate"
-            or type_details[0] == "hidden"
         ):
             editor_widget = QgsEditorWidgetSetup("TextEdit", {})
         elif (
@@ -587,6 +586,7 @@ class XLSFormConverter(QObject):
             or type_details[0] == "end"
             or type_details[0] == "username"
             or type_details[0] == "email"
+            or type_details[0] == "hidden"
         ):
             # Metadata values are hidden
             editor_widget = QgsEditorWidgetSetup("Hidden", {})
