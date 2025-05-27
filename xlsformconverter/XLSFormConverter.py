@@ -105,6 +105,7 @@ class XLSFormConverter(QObject):
         "acknowledge",
         "rank",
         "calculate",
+        "hidden",
     ]
     METADATA_TYPES = [
         "start",
@@ -276,20 +277,10 @@ class XLSFormConverter(QObject):
             or type_details[0] == "select_one_from_file"
             or type_details[0] == "select_multiple"
             or type_details[0] == "select_multiple_from_file"
-            or type_details[0] == "calculate"
             or type_details[0] == "username"
             or type_details[0] == "email"
         ):
             field_type = QMetaType.QString
-
-            if self.survey_calculation_index >= 0 and type_details[0] == "calculate":
-                field_calculation = (
-                    str(feature.attribute(self.survey_calculation_index)).strip()
-                    if feature.attribute(self.survey_calculation_index)
-                    else ""
-                )
-                if field_calculation != "":
-                    self.calculate_expressions[field_name] = field_calculation
 
             if type_details[0] == "barcode":
                 if not self.barcode_info_pushed:
@@ -327,6 +318,17 @@ class XLSFormConverter(QObject):
                         )
                     )
                 )
+        elif type_details[0] == "calculate" or type_details[0] == "hidden":
+            field_type = QMetaType.QString
+
+            if self.survey_calculation_index >= 0:
+                field_calculation = (
+                    str(feature.attribute(self.survey_calculation_index)).strip()
+                    if feature.attribute(self.survey_calculation_index)
+                    else ""
+                )
+                if field_calculation != "":
+                    self.calculate_expressions[field_name] = field_calculation
 
         if field_type:
             field = QgsField(field_name, field_type)
@@ -528,6 +530,7 @@ class XLSFormConverter(QObject):
             type_details[0] == "text"
             or type_details[0] == "barcode"
             or type_details[0] == "calculate"
+            or type_details[0] == "hidden"
         ):
             editor_widget = QgsEditorWidgetSetup("TextEdit", {})
         elif (
@@ -1221,7 +1224,7 @@ class XLSFormConverter(QObject):
                             feature_name, props
                         )
 
-                    if feature_type == "calculate":
+                    if feature_type == "calculate" or feature_type == "hidden":
                         editor_element.setShowLabel(editor_widget.type() != "Hidden")
                         current_editor_form[-1].setReadOnly(field_index, True)
                     elif (
@@ -1307,7 +1310,7 @@ class XLSFormConverter(QObject):
                         field_index,
                         QgsDefaultValue(
                             self.convert_expression(field_calculation),
-                            feature_type == "calculate",
+                            feature_type == "calculate" or feature_type == "hidden",
                         ),
                     )
                 elif field_default != "":
