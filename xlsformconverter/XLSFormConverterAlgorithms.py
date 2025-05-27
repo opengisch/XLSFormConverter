@@ -64,7 +64,11 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
 
     def initAlgorithm(self, config=None):
         self.addParameter(
-            QgsProcessingParameterFile(self.INPUT, self.tr("XLSForm file"))
+            QgsProcessingParameterFile(
+                self.INPUT,
+                self.tr("XLSForm file"),
+                fileFilter="XLSForm file (*.xls *.XLS *.xlsx *.XLSX *.ods *.ODS)",
+            )
         )
 
         param = QgsProcessingParameterString(
