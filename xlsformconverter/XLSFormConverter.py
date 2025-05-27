@@ -240,6 +240,8 @@ class XLSFormConverter(QObject):
             if feature.attribute(self.survey_label_index)
             else field_name
         )
+        html_fragment = html.fromstring(field_alias)
+        field_alias = html_fragment.text_content()
 
         field_type = None
         field = None
@@ -1143,6 +1145,8 @@ class XLSFormConverter(QObject):
                     relation.id(),
                     current_editor_form[-2].invisibleRootContainer(),
                 )
+                html_fragment = html.fromstring(feature_label)
+                feature_label = html_fragment.text_content()
                 editor_relation.setLabel(feature_label)
                 editor_relation.setShowLabel(feature_label != "")
                 if relevant_container:
@@ -1157,6 +1161,8 @@ class XLSFormConverter(QObject):
                     current_layer.pop()
                     current_editor_form.pop()
             elif feature_type == "begin group" or feature_type == "begin_group":
+                html_fragment = html.fromstring(feature_label)
+                feature_label = html_fragment.text_content()
                 current_container.append(
                     QgsAttributeEditorContainer(feature_label, current_container[-1])
                 )
