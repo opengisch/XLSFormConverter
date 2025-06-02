@@ -248,23 +248,23 @@ class XLSFormConverter(QObject):
         field = None
 
         if type_details[0] == "integer":
-            field_type = QMetaType.LongLong
+            field_type = QMetaType.Type.LongLong
         elif type_details[0] == "decimal":
-            field_type = QMetaType.Double
+            field_type = QMetaType.Type.Double
         elif type_details[0] == "range":
-            field_type = QMetaType.Double
+            field_type = QMetaType.Type.Double
         elif type_details[0] == "date" or type_details[0] == "today":
-            field_type = QMetaType.QDate
+            field_type = QMetaType.Type.QDate
         elif type_details[0] == "time":
-            field_type = QMetaType.QTime
+            field_type = QMetaType.Type.QTime
         elif (
             type_details[0] == "datetime"
             or type_details[0] == "start"
             or type_details[0] == "end"
         ):
-            field_type = QMetaType.QDateTime
+            field_type = QMetaType.Type.QDateTime
         elif type_details[0] == "acknowledge":
-            field_type = QMetaType.Bool
+            field_type = QMetaType.Type.Bool
         elif (
             type_details[0] == "text"
             or type_details[0] == "barcode"
@@ -280,7 +280,7 @@ class XLSFormConverter(QObject):
             or type_details[0] == "username"
             or type_details[0] == "email"
         ):
-            field_type = QMetaType.QString
+            field_type = QMetaType.Type.QString
 
             if type_details[0] == "barcode":
                 if not self.barcode_info_pushed:
@@ -319,7 +319,7 @@ class XLSFormConverter(QObject):
                     )
                 )
         elif type_details[0] == "calculate" or type_details[0] == "hidden":
-            field_type = QMetaType.QString
+            field_type = QMetaType.Type.QString
 
             if self.survey_calculation_index >= 0:
                 field_calculation = (
@@ -644,9 +644,9 @@ class XLSFormConverter(QObject):
     def detect_fields(self, child_name=None):
         fields = QgsFields()
 
-        fields.append(QgsField("uuid", QMetaType.QString))
+        fields.append(QgsField("uuid", QMetaType.Type.QString))
         if child_name:
-            fields.append(QgsField("uuid_parent", QMetaType.QString))
+            fields.append(QgsField("uuid_parent", QMetaType.Type.QString))
 
         current_child_name = []
         it = self.survey_layer.getFeatures()
@@ -986,7 +986,7 @@ class XLSFormConverter(QObject):
             output_lists_field_names = self.choices_layer.getFeature(1).attributes()
 
         for field_name in output_lists_field_names:
-            output_lists_fields.append(QgsField(field_name, QMetaType.QString))
+            output_lists_fields.append(QgsField(field_name, QMetaType.Type.QString))
 
         lists = {}
 
