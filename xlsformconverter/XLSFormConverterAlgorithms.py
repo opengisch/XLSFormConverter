@@ -1,7 +1,6 @@
 import os
 
 from qgis.core import (
-    Qgis,
     QgsProcessingAlgorithm,
     QgsProcessingParameterBoolean,
     QgsProcessingParameterEnum,
@@ -115,7 +114,6 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterFolderDestination(
                 self.OUTPUT,
                 self.tr("Output local project directory"),
-                Qgis.ProcessingFileParameterBehavior.Folder,
             )
         )
 
