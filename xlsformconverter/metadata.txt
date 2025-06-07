@@ -19,7 +19,9 @@ tracker=https://github.com/opengisch/XLSFormConverter
 repository=https://github.com/opengisch/XLSFormConverter
 homepage=https://github.com/opengisch/XLSFormConverter
 
-changelog=v1.0 - Initial release
+changelog=
+    v1.0.1 - Qt6 support, windows crasher fix
+    v1.0.0 - Initial release
 
 category=form
 icon=icon.svg
