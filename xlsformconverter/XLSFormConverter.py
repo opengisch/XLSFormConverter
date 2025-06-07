@@ -232,6 +232,11 @@ class XLSFormConverter(QObject):
         return True
 
     def create_field(self, feature):
+        if not feature.attribute(self.survey_type_index) or not feature.attribute(
+            self.survey_name_index
+        ):
+            return None
+
         type_details = str(feature.attribute(self.survey_type_index)).split(" ")
         type_details[0] = type_details[0].lower()
 
@@ -243,6 +248,7 @@ class XLSFormConverter(QObject):
         )
         html_fragment = html.fromstring(field_alias)
         field_alias = html_fragment.text_content()
+        del html_fragment
 
         field_type = None
         field = None
@@ -1038,6 +1044,7 @@ class XLSFormConverter(QObject):
                     if field_name == self.label_field_name:
                         html_fragment = html.fromstring(str(attribute_value))
                         attribute_value = html_fragment.text_content()
+                        del html_fragment
                     output_feature.setAttribute(field_name, attribute_value)
                 output_lists_sink.addFeature(output_feature)
 
@@ -1150,6 +1157,7 @@ class XLSFormConverter(QObject):
                 )
                 html_fragment = html.fromstring(feature_label)
                 feature_label = html_fragment.text_content()
+                del html_fragment
                 editor_relation.setLabel(feature_label)
                 editor_relation.setShowLabel(feature_label != "")
                 if relevant_container:
@@ -1166,6 +1174,7 @@ class XLSFormConverter(QObject):
             elif feature_type == "begin group" or feature_type == "begin_group":
                 html_fragment = html.fromstring(feature_label)
                 feature_label = html_fragment.text_content()
+                del html_fragment
                 current_container.append(
                     QgsAttributeEditorContainer(feature_label, current_container[-1])
                 )
