@@ -1,8 +1,9 @@
 import os
 import re
 import unicodedata
+from html.parser import HTMLParser
+from io import StringIO
 
-from lxml import html
 from qgis.core import (
     Qgis,
     QgsAttributeEditorContainer,
@@ -38,6 +39,27 @@ try:
     import markdown
 except ImportError:
     MARKDOWN_AVAILABLE = False
+
+
+class HTMLStripper(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.reset()
+        self.strict = False
+        self.convert_charrefs = True
+        self.text = StringIO()
+
+    def handle_data(self, d):
+        self.text.write(d)
+
+    def get_data(self):
+        return self.text.getvalue()
+
+
+def strip_tags(html):
+    s = HTMLStripper()
+    s.feed(html)
+    return s.get_data()
 
 
 class XLSFormConverter(QObject):
@@ -246,9 +268,7 @@ class XLSFormConverter(QObject):
             if feature.attribute(self.survey_label_index)
             else field_name
         )
-        html_fragment = html.fromstring(field_alias)
-        field_alias = html_fragment.text_content()
-        del html_fragment
+        field_alias = strip_tags(field_alias)
 
         field_type = None
         field = None
@@ -1042,9 +1062,7 @@ class XLSFormConverter(QObject):
                         output_lists_field_names.index(field_name)
                     )
                     if field_name == self.label_field_name:
-                        html_fragment = html.fromstring(str(attribute_value))
-                        attribute_value = html_fragment.text_content()
-                        del html_fragment
+                        attribute_value = strip_tags(str(attribute_value))
                     output_feature.setAttribute(field_name, attribute_value)
                 output_lists_sink.addFeature(output_feature)
 
@@ -1155,9 +1173,7 @@ class XLSFormConverter(QObject):
                     relation.id(),
                     current_editor_form[-2].invisibleRootContainer(),
                 )
-                html_fragment = html.fromstring(feature_label)
-                feature_label = html_fragment.text_content()
-                del html_fragment
+                feature_label = strip_tags(feature_label)
                 editor_relation.setLabel(feature_label)
                 editor_relation.setShowLabel(feature_label != "")
                 if relevant_container:
@@ -1172,9 +1188,7 @@ class XLSFormConverter(QObject):
                     current_layer.pop()
                     current_editor_form.pop()
             elif feature_type == "begin group" or feature_type == "begin_group":
-                html_fragment = html.fromstring(feature_label)
-                feature_label = html_fragment.text_content()
-                del html_fragment
+                feature_label = strip_tags(feature_label)
                 current_container.append(
                     QgsAttributeEditorContainer(feature_label, current_container[-1])
                 )
