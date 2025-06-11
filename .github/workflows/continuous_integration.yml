@@ -61,8 +61,12 @@ jobs:
         run: |
           qgis-plugin-ci --no-validation package ${{ github.sha }}
 
+      - name: Unzip
+        run: |
+          unzip xlsformconverter.${{ github.sha }}.zip -d xlsformconverter.${{ github.sha }}
+
       - name: Upload release assets
         uses: actions/upload-artifact@v4
         with:
-          name: xlsformconverter.${{ github.sha }}.zip
-          path: ./xlsformconverter.${{ github.sha }}.zip
+          name: xlsformconverter.${{ github.sha }}
+          path: ./xlsformconverter.${{ github.sha }}
