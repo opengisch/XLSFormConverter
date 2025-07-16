@@ -20,6 +20,7 @@ repository=https://github.com/opengisch/XLSFormConverter
 homepage=https://github.com/opengisch/XLSFormConverter
 
 changelog=
+    v1.0.3 - Improve automated label detection and make project language match case insensitive
     v1.0.2 - The lxml library shipped on windows is too unstable, use HTMLParser to strip tags instead
     v1.0.1 - Qt6 support, windows crasher fix
     v1.0.0 - Initial release
