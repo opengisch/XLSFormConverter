@@ -926,26 +926,46 @@ class XLSFormConverter(QObject):
         if fields[0] == "Field1":
             fields = self.survey_layer.getFeature(1).attributes()
 
-        self.survey_label_index = (
-            fields.index(self.label_field_name)
-            if self.label_field_name in fields
-            else -1
-        )
-        if self.survey_label_index == -1 and self.label_field_name != "label":
-            self.label_field_name = "label"
-            self.survey_label_index = (
-                fields.index(self.label_field_name)
-                if self.label_field_name in fields
-                else -1
-            )
-            if self.survey_label_index >= 0:
-                self.warning.emit(
-                    self.tr(
-                        "label::{} parameter not found in the survey layer, falling back to label".format(
-                            settings_language
+        self.survey_label_index = -1
+        for index, field in enumerate(fields):
+            if field.lower() == self.label_field_name.lower():
+                self.label_field_name = field
+                self.survey_label_index = index
+                break
+
+        if self.survey_label_index == -1:
+            fallback_label_field_name = ""
+            fallback_survey_label_index = -1
+            for index, field in enumerate(fields):
+                if field.lower() == "label":
+                    fallback_label_field_name = "label"
+                    fallback_survey_label_index = index
+                    break
+                elif not fallback_label_field_name and field.lower().startswith(
+                    "label::"
+                ):
+                    fallback_label_field_name = field
+                    fallback_survey_label_index = index
+
+            if fallback_survey_label_index >= 0:
+                self.label_field_name = fallback_label_field_name
+                self.survey_label_index = fallback_survey_label_index
+                if settings_language:
+                    self.info.emit(
+                        self.tr(
+                            "label::{} parameter not found in the survey layer, falling back to label".format(
+                                settings_language
+                            )
                         )
                     )
-                )
+                else:
+                    self.info.emit(
+                        self.tr(
+                            "Picked {} as language for the conversion".format(
+                                self.label_field_name
+                            )
+                        )
+                    )
 
         if self.survey_label_index == -1:
             self.error.emit(
@@ -962,11 +982,12 @@ class XLSFormConverter(QObject):
             if fields[0] == "Field1":
                 fields = self.choices_layer.getFeature(1).attributes()
 
-            self.choices_label_index = (
-                fields.index(self.label_field_name)
-                if self.label_field_name in fields
-                else -1
-            )
+            self.choices_label_index = -1
+            for index, field in enumerate(fields):
+                if field.lower() == self.label_field_name.lower():
+                    self.choices_label_index = index
+                    break
+
             if self.choices_label_index == -1:
                 self.error.emit(
                     self.tr(
