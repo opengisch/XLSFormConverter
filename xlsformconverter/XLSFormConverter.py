@@ -756,6 +756,10 @@ class XLSFormConverter(QObject):
     ):
         expression = original_expression
 
+        # be tolerant of ‘’ by replacing them with ''
+        expression = expression.replace("‘", "'")
+        expression = expression.replace("’", "'")
+
         # replace dot with field name
         if dot_field_name:
             expression = re.sub(
@@ -1358,14 +1362,17 @@ class XLSFormConverter(QObject):
                         ),
                     )
                 elif field_default != "":
-                    is_digit = field_default.replace(".", "", 1).isdigit()
-                    current_layer[-1].setDefaultValueDefinition(
-                        field_index,
-                        QgsDefaultValue(
-                            field_default if is_digit else "'{}'".format(field_default),
-                            False,
-                        ),
-                    )
+                    if "${last-saved" not in field_default:
+                        is_digit = field_default.replace(".", "", 1).isdigit()
+                        current_layer[-1].setDefaultValueDefinition(
+                            field_index,
+                            QgsDefaultValue(
+                                field_default
+                                if is_digit
+                                else "'{}'".format(field_default),
+                                False,
+                            ),
+                        )
 
             elif (
                 feature_type == "geopoint"
