@@ -1,6 +1,7 @@
 [general]
 name=XLSForm Converter
 qgisMinimumVersion=3.40
+supportsQt6=True
 description=Converts an XLSForm file into a QGIS project with prepared layers and feature forms.
 version=dev
 author=OPENGIS.ch
