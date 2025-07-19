@@ -1,8 +1,10 @@
 import os
 import re
+import shutil
 import unicodedata
 from html.parser import HTMLParser
 from io import StringIO
+from pathlib import Path
 
 from qgis.core import (
     Qgis,
@@ -63,6 +65,8 @@ def strip_tags(html):
 
 
 class XLSFormConverter(QObject):
+    xlsx_form_file = ""
+
     survey_layer = None
     choices_layer = None
     settings_layer = None
@@ -149,6 +153,8 @@ class XLSFormConverter(QObject):
         QObject.__init__(self)
         if not os.path.isfile(xlsx_form_file):
             return
+
+        self.xlsx_form_file = xlsx_form_file
 
         self.survey_layer = QgsVectorLayer(
             xlsx_form_file
@@ -564,46 +570,74 @@ class XLSFormConverter(QObject):
             or type_details[0] == "select_one_from_file"
             or type_details[0] == "select_multiple_from_file"
         ):
-            value_layer = self.output_project.mapLayersByName("list_" + type_details[1])
-            if value_layer:
-                allow_multi = (
-                    type_details[0] == "select_multiple"
-                    or type_details[0] == "select_multiple_from_file"
-                )
-                filter_expression = (
-                    str(feature.attribute(self.survey_choice_filter_index)).strip()
-                    if self.survey_choice_filter_index >= 0
-                    and feature.attribute(self.survey_choice_filter_index)
-                    else ""
-                )
-                if filter_expression != "":
-                    filter_expression = self.convert_expression(
-                        filter_expression, use_current_value=True
+            list_key = "name"
+            list_value = self.label_field_name
+            if (
+                type_details[0] == "select_one_from_file"
+                or type_details[0] == "select_multiple_from_file"
+            ):
+                if len(type_details) >= 2:
+                    file = " ".join(type_details[1:])
+                    file_path = Path(file)
+                    list_name = "list_" + file[: -len(file_path.suffix)]
+                    if self.survey_parameters_index >= 0:
+                        parameters = feature.attribute(self.survey_parameters_index)
+                        match = re.search("(?:value)\s*=\s*([^\s]*)", parameters)
+                        if match:
+                            list_key = match.group(1)
+                        match = re.search("(?:label)\s*=\s*([^\s]*)", parameters)
+                        if match:
+                            list_value = match.group(1)
+            else:
+                list_name = "list_" + type_details[1]
+
+            if list_name:
+                value_layer = self.output_project.mapLayersByName(list_name)
+                if value_layer:
+                    allow_multi = (
+                        type_details[0] == "select_multiple"
+                        or type_details[0] == "select_multiple_from_file"
                     )
-                if (
-                    type_details[0] == "select_multiple"
-                    or type_details[0] == "select_multiple_from_file"
-                ):
+                    filter_expression = (
+                        str(feature.attribute(self.survey_choice_filter_index)).strip()
+                        if self.survey_choice_filter_index >= 0
+                        and feature.attribute(self.survey_choice_filter_index)
+                        else ""
+                    )
                     if filter_expression != "":
-                        filter_expression = (
-                            "\"name\" != '' and (" + filter_expression + ")"
+                        filter_expression = self.convert_expression(
+                            filter_expression, use_current_value=True
                         )
-                    else:
-                        filter_expression = "\"name\" != ''"
-                editor_widget = QgsEditorWidgetSetup(
-                    "ValueRelation",
-                    {
-                        "Layer": value_layer[0].id(),
-                        "LayerName": type_details[1],
-                        "LayerProviderName": "ogr",
-                        "LayerSource": value_layer[0].source(),
-                        "Key": "name",
-                        "Value": self.label_field_name,
-                        "AllowNull": False,
-                        "AllowMulti": allow_multi,
-                        "FilterExpression": filter_expression,
-                    },
-                )
+                    if (
+                        type_details[0] == "select_multiple"
+                        or type_details[0] == "select_multiple_from_file"
+                    ):
+                        if filter_expression != "":
+                            filter_expression = (
+                                '"'
+                                + list_key
+                                + "\" != '' and ("
+                                + filter_expression
+                                + ")"
+                            )
+                        else:
+                            filter_expression = '"' + list_key + "\" != ''"
+                    editor_widget = QgsEditorWidgetSetup(
+                        "ValueRelation",
+                        {
+                            "Layer": value_layer[0].id(),
+                            "LayerName": type_details[1],
+                            "LayerProviderName": "ogr",
+                            "LayerSource": value_layer[0].source(),
+                            "Key": list_key,
+                            "Value": list_value,
+                            "AllowNull": False,
+                            "AllowMulti": allow_multi,
+                            "FilterExpression": filter_expression,
+                        },
+                    )
+                else:
+                    editor_widget = QgsEditorWidgetSetup("TextEdit", {})
             else:
                 editor_widget = QgsEditorWidgetSetup("TextEdit", {})
         elif (
@@ -747,6 +781,87 @@ class XLSFormConverter(QObject):
 
         return label_expression
 
+    def convert_choices(
+        self, list_name, features, output_lists_field_names, output_lists_fields
+    ):
+        writer_options = QgsVectorFileWriter.SaveVectorOptions()
+        writer_options.actionOnExistingFile = (
+            QgsVectorFileWriter.CreateOrOverwriteLayer
+            if os.path.isfile(self.output_file)
+            else QgsVectorFileWriter.CreateOrOverwriteFile
+        )
+        writer_options.layerName = "list_" + list_name
+        writer_options.fileEncoding = "utf-8"
+        output_lists_sink = QgsVectorFileWriter.create(
+            self.output_file,
+            output_lists_fields,
+            Qgis.WkbType.NoGeometry,
+            QgsCoordinateReferenceSystem(4326),
+            QgsProject.instance().transformContext(),
+            writer_options,
+        )
+
+        # Add pseudo-NULL value
+        output_feature = QgsFeature(output_lists_fields)
+        output_feature.setAttribute("name", "")
+        output_feature.setAttribute(self.label_field_name, "")
+        output_lists_sink.addFeature(output_feature)
+
+        for feature in features:
+            output_feature = QgsFeature(output_lists_fields)
+            for field_name in output_lists_field_names:
+                attribute_value = feature.attribute(
+                    output_lists_field_names.index(field_name)
+                )
+                if field_name == self.label_field_name:
+                    attribute_value = strip_tags(str(attribute_value))
+                output_feature.setAttribute(field_name, attribute_value)
+            output_lists_sink.addFeature(output_feature)
+
+        output_lists_sink.flushBuffer()
+        del output_lists_sink
+        output_lists_layer = QgsVectorLayer(
+            self.output_file + "|layername=" + writer_options.layerName,
+            writer_options.layerName,
+            "ogr",
+        )
+        output_lists_layer.setFlags(QgsMapLayer.Private)
+        output_lists_layer.setCustomProperty("QFieldSync/cloud_action", "no_action")
+        output_lists_layer.setCustomProperty("QFieldSync/action", "copy")
+        self.output_project.addMapLayer(output_lists_layer)
+
+    def convert_external_choices(self, type_details):
+        if len(type_details) < 2:
+            return False
+
+        from_file = " ".join(type_details[1:])
+        from_file_path = Path(self.xlsx_form_file).parent.joinpath(from_file)
+        if not from_file_path.exists():
+            return False
+
+        from_list_name = from_file[: -len(from_file_path.suffix)]
+        if self.output_project.mapLayersByName(from_list_name):
+            return True
+
+        output_from_file_path = Path(self.output_directory).joinpath(from_file)
+        try:
+            shutil.copy(str(from_file_path), str(output_from_file_path))
+        except Exception:
+            return False
+
+        output_from_layer = QgsVectorLayer(
+            str(output_from_file_path), "list_" + from_list_name, "ogr"
+        )
+        if not output_from_layer.isValid():
+            del output_from_layer
+            return False
+
+        output_from_layer.setFlags(QgsMapLayer.Private)
+        output_from_layer.setCustomProperty("QFieldSync/cloud_action", "no_action")
+        output_from_layer.setCustomProperty("QFieldSync/action", "copy")
+        self.output_project.addMapLayer(output_from_layer)
+        return True
+
     def convert_expression(
         self,
         original_expression,
@@ -882,6 +997,7 @@ class XLSFormConverter(QObject):
             return ""
 
         os.makedirs(os.path.abspath(output_directory), exist_ok=True)
+        self.output_directory = output_directory
 
         # Settings handling
         settings_title = "survey"
@@ -891,13 +1007,9 @@ class XLSFormConverter(QObject):
         if self.settings_layer.isValid():
             it = self.settings_layer.getFeatures()
             if self.settings_skip_first:
-                print("in")
                 feature = QgsFeature()
                 it.nextFeature(feature)
 
-            print("arg")
-            print(self.settings_form_id_index)
-            print("arg")
             for feature in it:
                 if self.settings_form_title_index >= 0 and feature.attribute(
                     self.settings_form_title_index
@@ -1057,51 +1169,33 @@ class XLSFormConverter(QObject):
             lists[list_name].append(feature)
 
         for list_name, features in lists.items():
-            writer_options = QgsVectorFileWriter.SaveVectorOptions()
-            writer_options.actionOnExistingFile = (
-                QgsVectorFileWriter.CreateOrOverwriteLayer
-                if os.path.isfile(self.output_file)
-                else QgsVectorFileWriter.CreateOrOverwriteFile
-            )
-            writer_options.layerName = "list_" + list_name
-            writer_options.fileEncoding = "utf-8"
-            output_lists_sink = QgsVectorFileWriter.create(
-                self.output_file,
-                output_lists_fields,
-                Qgis.WkbType.NoGeometry,
-                QgsCoordinateReferenceSystem(4326),
-                QgsProject.instance().transformContext(),
-                writer_options,
+            self.convert_choices(
+                list_name, features, output_lists_field_names, output_lists_fields
             )
 
-            # Add pseudo-NULL value
-            output_feature = QgsFeature(output_lists_fields)
-            output_feature.setAttribute("name", "")
-            output_feature.setAttribute(self.label_field_name, "")
-            output_lists_sink.addFeature(output_feature)
+        # External choices handling
+        it = self.survey_layer.getFeatures()
+        if self.survey_skip_first:
+            feature = QgsFeature()
+            it.nextFeature(feature)
 
-            for feature in features:
-                output_feature = QgsFeature(output_lists_fields)
-                for field_name in output_lists_field_names:
-                    attribute_value = feature.attribute(
-                        output_lists_field_names.index(field_name)
+        for feature in it:
+            feature_type = (
+                str(feature.attribute(self.survey_type_index)).strip().lower()
+            )
+            type_details = feature_type.split(" ")
+            if (
+                type_details[0] == "select_multiple_from_file"
+                or type_details[0] == "select_single_from_file"
+            ):
+                if not self.convert_external_choices(type_details):
+                    self.warning.emit(
+                        self.tr(
+                            "Select from file could not be converted, {} turned into text field".format(
+                                feature.attribute(self.survey_name_index)
+                            )
+                        )
                     )
-                    if field_name == self.label_field_name:
-                        attribute_value = strip_tags(str(attribute_value))
-                    output_feature.setAttribute(field_name, attribute_value)
-                output_lists_sink.addFeature(output_feature)
-
-            output_lists_sink.flushBuffer()
-            del output_lists_sink
-            output_lists_layer = QgsVectorLayer(
-                self.output_file + "|layername=" + writer_options.layerName,
-                writer_options.layerName,
-                "ogr",
-            )
-            output_lists_layer.setFlags(QgsMapLayer.Private)
-            output_lists_layer.setCustomProperty("QFieldSync/cloud_action", "no_action")
-            output_lists_layer.setCustomProperty("QFieldSync/action", "copy")
-            self.output_project.addMapLayer(output_lists_layer)
 
         # Survey handling
         self.calculate_expressions = {}
