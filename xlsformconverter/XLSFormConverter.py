@@ -577,9 +577,7 @@ class XLSFormConverter(QObject):
                 or type_details[0] == "select_multiple_from_file"
             ):
                 if len(type_details) >= 2:
-                    file = " ".join(type_details[1:])
-                    file_path = Path(file)
-                    list_name = "list_" + file[: -len(file_path.suffix)]
+                    list_name = "list_" + " ".join(type_details[1:])
                     if self.survey_parameters_index >= 0:
                         parameters = feature.attribute(self.survey_parameters_index)
                         match = re.search("(?:value)\s*=\s*([^\s]*)", parameters)
@@ -839,8 +837,7 @@ class XLSFormConverter(QObject):
         if not from_file_path.exists():
             return False
 
-        from_list_name = from_file[: -len(from_file_path.suffix)]
-        if self.output_project.mapLayersByName(from_list_name):
+        if self.output_project.mapLayersByName("list_" + from_file):
             return True
 
         output_from_file_path = Path(self.output_directory).joinpath(from_file)
@@ -850,7 +847,7 @@ class XLSFormConverter(QObject):
             return False
 
         output_from_layer = QgsVectorLayer(
-            str(output_from_file_path), "list_" + from_list_name, "ogr"
+            str(output_from_file_path), "list_" + from_file, "ogr"
         )
         if not output_from_layer.isValid():
             del output_from_layer
