@@ -689,13 +689,13 @@ class XLSFormConverter(QObject):
                     type_details = str(feature.attribute(self.survey_type_index)).split(
                         " "
                     )[0]
-                    if type_details == "geopoint":
+                    if type_details == "geopoint" or type_details == "start-geopoint":
                         geometry = Qgis.WkbType.Point
                         break
-                    if type_details == "geotrace":
+                    if type_details == "geotrace" or type_details == "start-geotrace":
                         geometry = Qgis.WkbType.LineString
                         break
-                    if type_details == "geoshape":
+                    if type_details == "geoshape" or type_details == "start-geoshape":
                         geometry = Qgis.WkbType.Polygon
                         break
 
@@ -1471,6 +1471,9 @@ class XLSFormConverter(QObject):
                 feature_type == "geopoint"
                 or feature_type == "geotrace"
                 or feature_type == "geoshape"
+                or feature_type == "start-geopoint"
+                or feature_type == "start-geotrace"
+                or feature_type == "start-geoshape"
             ):
                 continue
             else:
