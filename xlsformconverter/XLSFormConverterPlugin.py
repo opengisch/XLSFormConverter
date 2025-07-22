@@ -20,7 +20,7 @@ from qgis.PyQt.QtGui import QIcon
 
 from .XLSFormConverterAlgorithms import XLSFormConverterAlgorithm
 
-VERSION = "0.1"
+VERSION = "1.1.1"
 
 
 class XLSFormConverterProvider(QgsProcessingProvider):
@@ -45,7 +45,7 @@ class XLSFormConverterProvider(QgsProcessingProvider):
         return QIcon(os.path.join(os.path.dirname(__file__), "icon.svg"))
 
     def versionInfo(self):
-        return "0.1"
+        return VERSION
 
 
 class XLSFormConverterPlugin:

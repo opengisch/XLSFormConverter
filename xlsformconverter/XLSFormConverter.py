@@ -493,7 +493,7 @@ class XLSFormConverter(QObject):
             editor_widget = QgsEditorWidgetSetup("Range", {})
         elif type_details[0] == "range":
             if self.survey_parameters_index >= 0:
-                parameters = feature.attribute(self.survey_parameters_index)
+                parameters = str(feature.attribute(self.survey_parameters_index))
 
                 start_value = re.search("start=\s*([0-9]+)", parameters)
                 start_value = start_value.group(1) if start_value else 0
@@ -579,7 +579,9 @@ class XLSFormConverter(QObject):
                 if len(type_details) >= 2:
                     list_name = "list_" + " ".join(type_details[1:])
                     if self.survey_parameters_index >= 0:
-                        parameters = feature.attribute(self.survey_parameters_index)
+                        parameters = str(
+                            feature.attribute(self.survey_parameters_index)
+                        )
                         match = re.search("(?:value)\s*=\s*([^\s]*)", parameters)
                         if match:
                             list_key = match.group(1)
