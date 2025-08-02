@@ -1,9 +1,12 @@
 import os
 
 from qgis.core import (
+    QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingParameterBoolean,
+    QgsProcessingParameterDefinition,
     QgsProcessingParameterEnum,
+    QgsProcessingParameterFeatureSource,
     QgsProcessingParameterFile,
     QgsProcessingParameterFolderDestination,
     QgsProcessingParameterString,
@@ -31,6 +34,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
     LANGUAGE = "LANGUAGE"
     BASEMAP = "BASEMAP"
     UPLOAD_TO_QFIELDCLOUD = "UPLOAD_TO_QFIELDCLOUD"
+    GEOMETRIES = "GEOMETRIES"
     OUTPUT = "OUTPUT"
 
     def tr(self, string):
@@ -110,6 +114,17 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
+        param = QgsProcessingParameterFeatureSource(
+            self.GEOMETRIES,
+            self.tr(
+                "Pre-fill project with features' geometries and matching attributes"
+            ),
+            types=[QgsProcessing.SourceType.VectorAnyGeometry],
+            optional=True,
+        )
+        param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.Advanced)
+        self.addParameter(param)
+
         self.addParameter(
             QgsProcessingParameterFolderDestination(
                 self.OUTPUT,
@@ -121,6 +136,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         xlsform_file = self.parameterAsString(parameters, self.INPUT, context)
         title = self.parameterAsString(parameters, self.TITLE, context)
         language = self.parameterAsString(parameters, self.LANGUAGE, context)
+        geometries = self.parameterAsSource(parameters, self.GEOMETRIES, context)
 
         basemap = "OpenStreetMap"
         basemap_index = self.parameterAsEnum(parameters, self.BASEMAP, context)
@@ -141,7 +157,9 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         converter.warning.connect(lambda message: feedback.pushWarning(message))
         converter.error.connect(lambda message: feedback.reportError(message))
 
-        project_file = converter.convert(output_directory, title, language, basemap)
+        project_file = converter.convert(
+            output_directory, title, language, basemap, geometries
+        )
 
         if project_file and upload_to_qfieldcloud:
             for root, dirs, files in os.walk(output_directory):

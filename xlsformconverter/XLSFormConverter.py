@@ -18,6 +18,8 @@ from qgis.core import (
     QgsEditorWidgetSetup,
     QgsExpression,
     QgsFeature,
+    QgsFeatureRequest,
+    QgsFeatureSink,
     QgsField,
     QgsFieldConstraints,
     QgsFields,
@@ -33,6 +35,8 @@ from qgis.core import (
     QgsRelationContext,
     QgsVectorFileWriter,
     QgsVectorLayer,
+    QgsVectorLayerUtils,
+    QgsWkbTypes,
 )
 from qgis.PyQt.QtCore import QMetaType, QObject, QSize, pyqtSignal
 
@@ -690,13 +694,13 @@ class XLSFormConverter(QObject):
                         " "
                     )[0]
                     if type_details == "geopoint" or type_details == "start-geopoint":
-                        geometry = Qgis.WkbType.Point
+                        geometry = Qgis.WkbType.MultiPoint
                         break
                     if type_details == "geotrace" or type_details == "start-geotrace":
-                        geometry = Qgis.WkbType.LineString
+                        geometry = Qgis.WkbType.MultiLineString
                         break
                     if type_details == "geoshape" or type_details == "start-geoshape":
-                        geometry = Qgis.WkbType.Polygon
+                        geometry = Qgis.WkbType.MultiPolygon
                         break
 
         return geometry
@@ -990,7 +994,12 @@ class XLSFormConverter(QObject):
         ms.writeXml(mapcanvasNode, document)
 
     def convert(
-        self, output_directory, title=None, language=None, basemap="OpenStreetMap"
+        self,
+        output_directory,
+        title=None,
+        language=None,
+        basemap="OpenStreetMap",
+        geometries=None,
     ):
         if not self.survey_layer:
             return ""
@@ -1494,4 +1503,39 @@ class XLSFormConverter(QObject):
         )
         self.output_project.writeProject.connect(self.process_project_write)
         self.output_project.write(output_project_file)
+
+        if (
+            geometries
+            and current_layer[0].geometryType() != Qgis.GeometryType.Null
+            and current_layer[0].geometryType() != Qgis.GeometryType.Unknown
+        ):
+            if current_layer[0].geometryType() == QgsWkbTypes.geometryType(
+                geometries.wkbType()
+            ):
+                current_layer[0].startEditing()
+
+                request = QgsFeatureRequest()
+                request.setDestinationCrs(
+                    current_layer[0].crs(), self.output_project.transformContext()
+                )
+                geometries_iterator = geometries.getFeatures(request)
+                for feature in geometries_iterator:
+                    output_features = QgsVectorLayerUtils.makeFeatureCompatible(
+                        feature,
+                        current_layer[0],
+                        QgsFeatureSink.SinkFlag.RegeneratePrimaryKey,
+                    )
+                    if output_features:
+                        current_layer[0].addFeature(
+                            output_features[0], QgsFeatureSink.Flag.FastInsert
+                        )
+
+                current_layer[0].commitChanges()
+            else:
+                self.warning.emit(
+                    self.tr(
+                        "The geometries' type does not match the output survey layer, skipping"
+                    )
+                )
+
         return output_project_file
