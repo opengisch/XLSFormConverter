@@ -78,6 +78,12 @@ class XLSFormConverter(QObject):
     output_field = None
     output_project = None
 
+    custom_title = None
+    preferred_language = None
+    basemap = None
+    geometries = None
+    groups_as_tabs = False
+
     label_field_name = "label"
 
     survey_skip_first = False
@@ -993,13 +999,24 @@ class XLSFormConverter(QObject):
         ms.setExtent(extent)
         ms.writeXml(mapcanvasNode, document)
 
+    def set_custom_title(self, title):
+        self.custom_title = title
+
+    def set_preferred_language(self, language):
+        self.preferred_language = language
+
+    def set_basemap(self, basemap):
+        self.basemap = basemap
+
+    def set_geometries(self, geometries):
+        self.geometries = geometries
+
+    def set_groups_as_tabs(self, groups_as_tabs):
+        self.groups_as_tabs = groups_as_tabs
+
     def convert(
         self,
         output_directory,
-        title=None,
-        language=None,
-        basemap="OpenStreetMap",
-        geometries=None,
     ):
         if not self.survey_layer:
             return ""
@@ -1035,11 +1052,11 @@ class XLSFormConverter(QObject):
                     )
                 break
 
-        if title:
-            settings_title = title
+        if self.custom_title:
+            settings_title = self.custom_title
 
-        if language:
-            settings_language = language
+        if self.preferred_language:
+            settings_language = self.preferred_language
 
         if settings_language != "":
             self.label_field_name = "label::{}".format(settings_language)
@@ -1122,7 +1139,7 @@ class XLSFormConverter(QObject):
                 )
                 return
 
-        settings_filename = title if title else settings_title
+        settings_filename = self.custom_title if self.custom_title else settings_title
         settings_filename = (
             unicodedata.normalize("NFKD", settings_filename)
             .encode("ascii", "ignore")
@@ -1141,10 +1158,10 @@ class XLSFormConverter(QObject):
         )
         self.output_project = QgsProject()
 
-        if basemap in self.BASEMAPS:
+        if self.basemap in self.BASEMAPS:
             base_layer = QgsRasterLayer(
-                self.BASEMAPS[basemap],
-                basemap,
+                self.BASEMAPS[self.basemap],
+                self.basemap,
                 "wms",
             )
             self.output_project.setCrs(base_layer.crs())
@@ -1215,6 +1232,8 @@ class XLSFormConverter(QObject):
         current_editor_form[-1].invisibleRootContainer().clear()
         current_editor_form[-1].setLayout(Qgis.AttributeFormLayout.DragAndDrop)
 
+        current_editor_group_level = [0]
+
         current_container = [
             QgsAttributeEditorContainer(
                 "Survey", current_editor_form[-1].invisibleRootContainer()
@@ -1277,6 +1296,8 @@ class XLSFormConverter(QObject):
                 current_editor_form[-1].invisibleRootContainer().clear()
                 current_editor_form[-1].setLayout(Qgis.AttributeFormLayout.DragAndDrop)
 
+                current_editor_group_level.append(0)
+
                 current_container.append(
                     QgsAttributeEditorContainer(
                         "Survey", current_editor_form[-1].invisibleRootContainer()
@@ -1311,26 +1332,49 @@ class XLSFormConverter(QObject):
             elif feature_type == "end repeat" or feature_type == "end_repeat":
                 if len(current_layer) > 1:
                     current_container.pop()
+                    current_editor_group_level.pop()
                     current_layer[-1].setEditFormConfig(current_editor_form[-1])
                     current_layer.pop()
                     current_editor_form.pop()
             elif feature_type == "begin group" or feature_type == "begin_group":
                 feature_label = strip_tags(feature_label)
-                current_container.append(
-                    QgsAttributeEditorContainer(feature_label, current_container[-1])
-                )
-                current_container[-1].setType(
-                    Qgis.AttributeEditorContainerType.GroupBox
-                )
-                current_container[-1].setShowLabel(feature_label != "")
-                if relevant_expression != "":
-                    current_container[-1].setVisibilityExpression(
-                        QgsOptionalExpression(QgsExpression(relevant_expression))
+
+                if self.groups_as_tabs and current_editor_group_level[-1] == 0:
+                    current_container.append(
+                        QgsAttributeEditorContainer(
+                            feature_label,
+                            current_editor_form[-1].invisibleRootContainer(),
+                        )
                     )
-                current_container[-2].addChildElement(current_container[-1])
+                    current_container[-1].setType(Qgis.AttributeEditorContainerType.Tab)
+                    if relevant_expression != "":
+                        current_container[-1].setVisibilityExpression(
+                            QgsOptionalExpression(QgsExpression(relevant_expression))
+                        )
+                    current_editor_form[-1].invisibleRootContainer().addChildElement(
+                        current_container[-1]
+                    )
+                    current_editor_group_level[-1] = current_editor_group_level[-1] + 1
+                else:
+                    current_container.append(
+                        QgsAttributeEditorContainer(
+                            feature_label, current_container[-1]
+                        )
+                    )
+                    current_container[-1].setType(
+                        Qgis.AttributeEditorContainerType.GroupBox
+                    )
+                    current_container[-1].setShowLabel(feature_label != "")
+                    if relevant_expression != "":
+                        current_container[-1].setVisibilityExpression(
+                            QgsOptionalExpression(QgsExpression(relevant_expression))
+                        )
+                    current_container[-2].addChildElement(current_container[-1])
+                    current_editor_group_level[-1] = current_editor_group_level[-1] + 1
             elif feature_type == "end group" or feature_type == "end_group":
                 if len(current_container) > 1:
                     current_container.pop()
+                    current_editor_group_level[-1] = current_editor_group_level[-1] - 1
             elif feature_type == "note":
                 editor_text = QgsAttributeEditorTextElement(
                     feature_name, current_container[-1]
@@ -1505,12 +1549,12 @@ class XLSFormConverter(QObject):
         self.output_project.write(output_project_file)
 
         if (
-            geometries
+            self.geometries
             and current_layer[0].geometryType() != Qgis.GeometryType.Null
             and current_layer[0].geometryType() != Qgis.GeometryType.Unknown
         ):
             if current_layer[0].geometryType() == QgsWkbTypes.geometryType(
-                geometries.wkbType()
+                self.geometries.wkbType()
             ):
                 current_layer[0].startEditing()
 
@@ -1518,7 +1562,7 @@ class XLSFormConverter(QObject):
                 request.setDestinationCrs(
                     current_layer[0].crs(), self.output_project.transformContext()
                 )
-                geometries_iterator = geometries.getFeatures(request)
+                geometries_iterator = self.geometries.getFeatures(request)
                 for feature in geometries_iterator:
                     output_features = QgsVectorLayerUtils.makeFeatureCompatible(
                         feature,
