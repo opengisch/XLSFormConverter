@@ -1560,6 +1560,15 @@ class XLSFormConverter(QObject):
         else:
             self.output_extent = QgsRectangle(297905, 3866631, 2336801, 7381331)
 
+        if self.output_project.crs().authid() == "EPSG:3857":
+            # Display coordinates in WGS84 to provide a more useful experience for the average person
+            self.output_project.displaySettings().setCoordinateType(
+                Qgis.CoordinateDisplayType.CustomCrs
+            )
+            self.output_project.displaySettings().setCoordinateCustomCrs(
+                QgsCoordinateReferenceSystem("EPSG:4326")
+            )
+
         output_project_file = str(
             os.path.join(output_directory, settings_filename + ".qgz")
         )
