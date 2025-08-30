@@ -33,6 +33,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
     TITLE = "TITLE"
     LANGUAGE = "LANGUAGE"
     BASEMAP = "BASEMAP"
+    GROUPS_AS_TABS = "GROUPS_AS_TABS"
     UPLOAD_TO_QFIELDCLOUD = "UPLOAD_TO_QFIELDCLOUD"
     GEOMETRIES = "GEOMETRIES"
     OUTPUT = "OUTPUT"
@@ -114,6 +115,14 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
+        param = QgsProcessingParameterBoolean(
+            self.GROUPS_AS_TABS,
+            self.tr("Serve root groups as feature form tabs"),
+            defaultValue=False,
+        )
+        param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.Advanced)
+        self.addParameter(param)
+
         param = QgsProcessingParameterFeatureSource(
             self.GEOMETRIES,
             self.tr(
@@ -143,6 +152,9 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         if basemap_index == 1:
             basemap = "HOT"
 
+        groups_as_tabs = self.parameterAsBoolean(
+            parameters, self.GROUPS_AS_TABS, context
+        )
         upload_to_qfieldcloud = self.parameterAsBoolean(
             parameters, self.UPLOAD_TO_QFIELDCLOUD, context
         )
@@ -157,9 +169,13 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         converter.warning.connect(lambda message: feedback.pushWarning(message))
         converter.error.connect(lambda message: feedback.reportError(message))
 
-        project_file = converter.convert(
-            output_directory, title, language, basemap, geometries
-        )
+        converter.set_custom_title(title)
+        converter.set_preferred_language(language)
+        converter.set_basemap(basemap)
+        converter.set_geometries(geometries)
+        converter.set_groups_as_tabs(groups_as_tabs)
+
+        project_file = converter.convert(output_directory)
 
         if project_file and upload_to_qfieldcloud:
             for root, dirs, files in os.walk(output_directory):
