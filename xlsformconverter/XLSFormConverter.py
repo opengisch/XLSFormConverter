@@ -13,6 +13,8 @@ from qgis.core import (
     QgsAttributeEditorRelation,
     QgsAttributeEditorTextElement,
     QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+    QgsCsException,
     QgsDefaultValue,
     QgsEditFormConfig,
     QgsEditorWidgetSetup,
@@ -76,6 +78,7 @@ class XLSFormConverter(QObject):
     settings_layer = None
 
     output_field = None
+    output_extent = None
     output_project = None
 
     label_field_name = "label"
@@ -985,12 +988,10 @@ class XLSFormConverter(QObject):
         mapcanvasNode.setAttribute("name", "theMapCanvas")
         qgisNode.appendChild(mapcanvasNode)
 
-        extent = QgsRectangle(297905, 3866631, 2336801, 7381331)
-
         ms = QgsMapSettings()
         ms.setDestinationCrs(self.output_project.crs())
         ms.setOutputSize(QSize(500, 500))
-        ms.setExtent(extent)
+        ms.setExtent(self.output_extent)
         ms.writeXml(mapcanvasNode, document)
 
     def convert(
@@ -1140,6 +1141,7 @@ class XLSFormConverter(QObject):
             os.path.join(output_directory, settings_filename + ".gpkg")
         )
         self.output_project = QgsProject()
+        self.output_project.setCrs(QgsCoordinateReferenceSystem("EPSG:3587"))
 
         if basemap in self.BASEMAPS:
             base_layer = QgsRasterLayer(
@@ -1498,12 +1500,7 @@ class XLSFormConverter(QObject):
 
         current_layer[0].setEditFormConfig(current_editor_form[0])
 
-        output_project_file = str(
-            os.path.join(output_directory, settings_filename + ".qgz")
-        )
-        self.output_project.writeProject.connect(self.process_project_write)
-        self.output_project.write(output_project_file)
-
+        survey_extent = None
         if (
             geometries
             and current_layer[0].geometryType() != Qgis.GeometryType.Null
@@ -1531,11 +1528,42 @@ class XLSFormConverter(QObject):
                         )
 
                 current_layer[0].commitChanges()
+                if not current_layer[0].extent().isEmpty():
+                    survey_extent = current_layer[0].extent()
             else:
                 self.warning.emit(
                     self.tr(
                         "The geometries' type does not match the output survey layer, skipping"
                     )
                 )
+
+        if survey_extent:
+            transform = QgsCoordinateTransform(
+                current_layer[0].crs(),
+                self.output_project.crs(),
+                self.output_project.transformContext(),
+            )
+            try:
+                survey_extent = transform.transformBoundingBox(survey_extent)
+                # Insure the initial project extent is not too zoomed in
+                if survey_extent.width() < 200:
+                    padding = (200 - survey_extent.width()) / 2
+                    survey_extent.setXMinimum(survey_extent.xMinimum() - padding)
+                    survey_extent.setXMaximum(survey_extent.xMaximum() + padding)
+                if survey_extent.height() < 200:
+                    padding = (200 - survey_extent.height()) / 2
+                    survey_extent.setYMinimum(survey_extent.yMinimum() - padding)
+                    survey_extent.setYMaximum(survey_extent.yMaximum() + padding)
+                self.output_extent = survey_extent
+            except QgsCsException:
+                self.output_extent = QgsRectangle(297905, 3866631, 2336801, 7381331)
+        else:
+            self.output_extent = QgsRectangle(297905, 3866631, 2336801, 7381331)
+
+        output_project_file = str(
+            os.path.join(output_directory, settings_filename + ".qgz")
+        )
+        self.output_project.writeProject.connect(self.process_project_write)
+        self.output_project.write(output_project_file)
 
         return output_project_file
