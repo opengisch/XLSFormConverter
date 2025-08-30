@@ -4,6 +4,7 @@ from qgis.core import (
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingParameterBoolean,
+    QgsProcessingParameterCrs,
     QgsProcessingParameterDefinition,
     QgsProcessingParameterEnum,
     QgsProcessingParameterFeatureSource,
@@ -35,6 +36,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
     BASEMAP = "BASEMAP"
     GROUPS_AS_TABS = "GROUPS_AS_TABS"
     UPLOAD_TO_QFIELDCLOUD = "UPLOAD_TO_QFIELDCLOUD"
+    CRS = "CRS"
     GEOMETRIES = "GEOMETRIES"
     OUTPUT = "OUTPUT"
 
@@ -123,6 +125,14 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.Advanced)
         self.addParameter(param)
 
+        param = QgsProcessingParameterCrs(
+            self.CRS,
+            self.tr("Project CRS"),
+            optional=True,
+        )
+        param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.Advanced)
+        self.addParameter(param)
+
         param = QgsProcessingParameterFeatureSource(
             self.GEOMETRIES,
             self.tr(
@@ -145,6 +155,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         xlsform_file = self.parameterAsString(parameters, self.INPUT, context)
         title = self.parameterAsString(parameters, self.TITLE, context)
         language = self.parameterAsString(parameters, self.LANGUAGE, context)
+        crs = self.parameterAsCrs(parameters, self.CRS, context)
         geometries = self.parameterAsSource(parameters, self.GEOMETRIES, context)
 
         basemap = "OpenStreetMap"
@@ -174,6 +185,8 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         converter.set_basemap(basemap)
         converter.set_geometries(geometries)
         converter.set_groups_as_tabs(groups_as_tabs)
+        if crs.isValid():
+            converter.set_crs(crs)
 
         project_file = converter.convert(output_directory)
 
