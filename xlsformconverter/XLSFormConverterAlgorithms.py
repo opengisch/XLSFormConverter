@@ -111,19 +111,19 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
 
         self.addParameter(
             QgsProcessingParameterBoolean(
+                self.GROUPS_AS_TABS,
+                self.tr("Use form tabs for root groups"),
+                defaultValue=False,
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterBoolean(
                 self.UPLOAD_TO_QFIELDCLOUD,
                 self.tr("Upload generated project to QFieldCloud"),
                 defaultValue=False,
             )
         )
-
-        param = QgsProcessingParameterBoolean(
-            self.GROUPS_AS_TABS,
-            self.tr("Serve root groups as feature form tabs"),
-            defaultValue=False,
-        )
-        param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.Advanced)
-        self.addParameter(param)
 
         param = QgsProcessingParameterCrs(
             self.CRS,
