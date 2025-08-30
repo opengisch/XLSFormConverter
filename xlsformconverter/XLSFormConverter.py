@@ -84,6 +84,7 @@ class XLSFormConverter(QObject):
     custom_title = None
     preferred_language = None
     basemap = None
+    crs = QgsCoordinateReferenceSystem("EPSG:3857")
     geometries = None
     groups_as_tabs = False
 
@@ -452,7 +453,9 @@ class XLSFormConverter(QObject):
             self.output_file,
             layer_fields,
             layer_geometry,
-            QgsCoordinateReferenceSystem(4326),
+            QgsCoordinateReferenceSystem("EPSG:4326")
+            if self.crs.authid() == "EPSG:3857"
+            else self.crs,
             QgsProject.instance().transformContext(),
             writer_options,
         )
@@ -1003,7 +1006,8 @@ class XLSFormConverter(QObject):
         ms = QgsMapSettings()
         ms.setDestinationCrs(self.output_project.crs())
         ms.setOutputSize(QSize(500, 500))
-        ms.setExtent(self.output_extent)
+        if self.output_extent:
+            ms.setExtent(self.output_extent)
         ms.writeXml(mapcanvasNode, document)
 
     def set_custom_title(self, title):
@@ -1014,6 +1018,9 @@ class XLSFormConverter(QObject):
 
     def set_basemap(self, basemap):
         self.basemap = basemap
+
+    def set_crs(self, crs):
+        self.crs = crs
 
     def set_geometries(self, geometries):
         self.geometries = geometries
@@ -1167,7 +1174,7 @@ class XLSFormConverter(QObject):
             os.path.join(output_directory, settings_filename + ".gpkg")
         )
         self.output_project = QgsProject()
-        self.output_project.setCrs(QgsCoordinateReferenceSystem("EPSG:3587"))
+        self.output_project.setCrs(self.crs)
 
         if self.basemap in self.BASEMAPS:
             base_layer = QgsRasterLayer(
@@ -1175,7 +1182,6 @@ class XLSFormConverter(QObject):
                 self.basemap,
                 "wms",
             )
-            self.output_project.setCrs(base_layer.crs())
             self.output_project.addMapLayer(base_layer)
 
         # Choices handling
@@ -1649,20 +1655,67 @@ class XLSFormConverter(QObject):
             )
             try:
                 survey_extent = transform.transformBoundingBox(survey_extent)
-                # Insure the initial project extent is not too zoomed in
-                if survey_extent.width() < 200:
-                    padding = (200 - survey_extent.width()) / 2
-                    survey_extent.setXMinimum(survey_extent.xMinimum() - padding)
-                    survey_extent.setXMaximum(survey_extent.xMaximum() + padding)
-                if survey_extent.height() < 200:
-                    padding = (200 - survey_extent.height()) / 2
-                    survey_extent.setYMinimum(survey_extent.yMinimum() - padding)
-                    survey_extent.setYMaximum(survey_extent.yMaximum() + padding)
-                self.output_extent = survey_extent
+                if (
+                    self.output_project.crs().mapUnits() != Qgis.DistanceUnit.Unknown
+                    and self.output_project.crs().mapUnits()
+                    != Qgis.DistanceUnit.Degrees
+                ):
+                    # Insure the initial project extent is not too zoomed in
+                    if survey_extent.width() < 200:
+                        padding = (200 - survey_extent.width()) / 2
+                        survey_extent.setXMinimum(survey_extent.xMinimum() - padding)
+                        survey_extent.setXMaximum(survey_extent.xMaximum() + padding)
+                    if survey_extent.height() < 200:
+                        padding = (200 - survey_extent.height()) / 2
+                        survey_extent.setYMinimum(survey_extent.yMinimum() - padding)
+                        survey_extent.setYMaximum(survey_extent.yMaximum() + padding)
+
+                    survey_extent.scale(1.05)
+                    self.output_extent = survey_extent
             except QgsCsException:
-                self.output_extent = QgsRectangle(297905, 3866631, 2336801, 7381331)
-        else:
-            self.output_extent = QgsRectangle(297905, 3866631, 2336801, 7381331)
+                survey_extent = None
+
+        if not survey_extent:
+            print("...")
+            print(self.output_project.crs().authid())
+            if self.output_project.crs().authid() == "EPSG:3857":
+                survey_extent = QgsRectangle(-9.88, 33.41, 40.97, 61.11)
+            else:
+                survey_extent = self.output_project.crs().bounds()
+                if survey_extent.width() < survey_extent.height():
+                    survey_extent.setYMinimum(
+                        survey_extent.yMinimum()
+                        + survey_extent.height() / 2
+                        - survey_extent.width() / 2
+                    )
+                    survey_extent.setYMaximum(
+                        survey_extent.yMinimum()
+                        + survey_extent.height() / 2
+                        + survey_extent.width() / 2
+                    )
+                else:
+                    survey_extent.setXMinimum(
+                        survey_extent.xMinimum()
+                        + survey_extent.width() / 2
+                        - survey_extent.height() / 2
+                    )
+                    survey_extent.setXMaximum(
+                        survey_extent.xMinimum()
+                        + survey_extent.width() / 2
+                        + survey_extent.height() / 2
+                    )
+
+            transform = QgsCoordinateTransform(
+                QgsCoordinateReferenceSystem("EPSG:4326"),
+                self.output_project.crs(),
+                self.output_project.transformContext(),
+            )
+            print(survey_extent)
+            survey_extent = transform.transformBoundingBox(survey_extent)
+            print(survey_extent)
+            print("---")
+
+        self.output_extent = survey_extent
 
         if self.output_project.crs().authid() == "EPSG:3857":
             # Display coordinates in WGS84 to provide a more useful experience for the average person
