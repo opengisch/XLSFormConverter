@@ -508,11 +508,17 @@ class XLSFormConverter(QObject):
             if self.survey_parameters_index >= 0:
                 parameters = str(feature.attribute(self.survey_parameters_index))
 
-                start_value = re.search("start=\s*([0-9]+)", parameters)
+                start_value = re.search(
+                    "start=\s*([0-9]+)", parameters, flags=re.IGNORECASE
+                )
                 start_value = start_value.group(1) if start_value else 0
-                end_value = re.search("end=\s*([0-9]+)", parameters)
+                end_value = re.search(
+                    "end=\s*([0-9]+)", parameters, flags=re.IGNORECASE
+                )
                 end_value = end_value.group(1) if end_value else 10
-                step_value = re.search("step=\s*([0-9]+)", parameters)
+                step_value = re.search(
+                    "step=\s*([0-9]+)", parameters, flags=re.IGNORECASE
+                )
                 step_value = step_value.group(1) if step_value else 1
 
                 editor_widget = QgsEditorWidgetSetup(
@@ -1526,27 +1532,43 @@ class XLSFormConverter(QObject):
                         )
 
                 # project-wide max-pixels handling
-                if (
-                    feature_type == "image"
-                    and self.survey_parameters_index >= 0
-                    and settings_max_pixels >= 0
-                ):
+                if feature_type == "image" and self.survey_parameters_index >= 0:
                     parameters = str(feature.attribute(self.survey_parameters_index))
-                    image_max_pixels = re.search("max-pixels=\s*([0-9]+)", parameters)
+                    image_max_pixels = re.search(
+                        "max-pixels=\s*([0-9]+)", parameters, flags=re.IGNORECASE
+                    )
                     image_max_pixels = (
-                        image_max_pixels.group(1) if image_max_pixels else 0
+                        int(image_max_pixels.group(1)) if image_max_pixels else 0
                     )
                     if image_max_pixels > 0:
-                        if settings_max_pixels == 0:
-                            # first max-pixels definition, adopt value
-                            settings_max_pixels = image_max_pixels
-                        elif settings_max_pixels != image_max_pixels:
-                            # multiple max-pixels definition, adopt the largest value
-                            settings_max_pixels = max(
-                                settings_max_pixels, image_max_pixels
+                        if settings_max_pixels > -1:
+                            if settings_max_pixels == 0:
+                                # first max-pixels definition, adopt value
+                                settings_max_pixels = image_max_pixels
+                            elif settings_max_pixels != image_max_pixels:
+                                # multiple max-pixels definition, adopt the largest value
+                                settings_max_pixels = max(
+                                    settings_max_pixels, image_max_pixels
+                                )
+                                self.warning.emit(
+                                    self.tr(
+                                        "Due to the presence of a mix of image attributes having max-pixels parameter of varying values, the largest max-pixels value will be applied"
+                                    )
+                                )
+                        else:
+                            self.warning.emit(
+                                self.tr(
+                                    "Due to the presence of a mix of image attributes having defined and undefined max-pixels parameter, the parameter has been ignored"
+                                )
                             )
-                    elif settings_max_pixels > 0:
-                        # mix of images with defined and missing max-pixels, remove maximum value
+                    elif settings_max_pixels >= 0:
+                        # image with missing max-pixels, prevent maximum value
+                        if settings_max_pixels > 0:
+                            self.warning.emit(
+                                self.tr(
+                                    "Due to the presence of a mix of image attributes having defined and undefined max-pixels parameter, the parameter has been ignored"
+                                )
+                            )
                         settings_max_pixels = -1
 
             elif (
@@ -1572,7 +1594,7 @@ class XLSFormConverter(QObject):
         current_layer[0].setEditFormConfig(current_editor_form[0])
 
         if settings_max_pixels > 0:
-            self.output_project.writEntry(
+            self.output_project.writeEntry(
                 "qfieldsync", "maximumImageWidthHeight", settings_max_pixels
             )
 
