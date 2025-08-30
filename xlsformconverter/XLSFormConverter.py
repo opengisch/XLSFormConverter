@@ -513,7 +513,7 @@ class XLSFormConverter(QObject):
                 end_value = re.search("end=\s*([0-9]+)", parameters)
                 end_value = end_value.group(1) if end_value else 10
                 step_value = re.search("step=\s*([0-9]+)", parameters)
-                step_value = step_value.group(1) if end_value else 1
+                step_value = step_value.group(1) if step_value else 1
 
                 editor_widget = QgsEditorWidgetSetup(
                     "Range",
@@ -1030,6 +1030,9 @@ class XLSFormConverter(QObject):
         settings_id = ""
         settings_language = ""
 
+        # Project-wide image max-pixel parameter
+        settings_max_pixels = 0
+
         if self.settings_layer.isValid():
             it = self.settings_layer.getFeatures()
             if self.settings_skip_first:
@@ -1522,6 +1525,30 @@ class XLSFormConverter(QObject):
                             ),
                         )
 
+                # project-wide max-pixels handling
+                if (
+                    feature_type == "image"
+                    and self.survey_parameters_index >= 0
+                    and settings_max_pixels >= 0
+                ):
+                    parameters = str(feature.attribute(self.survey_parameters_index))
+                    image_max_pixels = re.search("max-pixels=\s*([0-9]+)", parameters)
+                    image_max_pixels = (
+                        image_max_pixels.group(1) if image_max_pixels else 0
+                    )
+                    if image_max_pixels > 0:
+                        if settings_max_pixels == 0:
+                            # first max-pixels definition, adopt value
+                            settings_max_pixels = image_max_pixels
+                        elif settings_max_pixels != image_max_pixels:
+                            # multiple max-pixels definition, adopt the largest value
+                            settings_max_pixels = max(
+                                settings_max_pixels, image_max_pixels
+                            )
+                    elif settings_max_pixels > 0:
+                        # mix of images with defined and missing max-pixels, remove maximum value
+                        settings_max_pixels = -1
+
             elif (
                 feature_type == "geopoint"
                 or feature_type == "geotrace"
@@ -1543,6 +1570,17 @@ class XLSFormConverter(QObject):
                     )
 
         current_layer[0].setEditFormConfig(current_editor_form[0])
+
+        if settings_max_pixels > 0:
+            self.output_project.writEntry(
+                "qfieldsync", "maximumImageWidthHeight", settings_max_pixels
+            )
+
+        output_project_file = str(
+            os.path.join(output_directory, settings_filename + ".qgz")
+        )
+        self.output_project.writeProject.connect(self.process_project_write)
+        self.output_project.write(output_project_file)
 
         survey_extent = None
         if (
