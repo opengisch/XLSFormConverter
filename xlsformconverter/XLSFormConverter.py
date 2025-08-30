@@ -85,6 +85,7 @@ class XLSFormConverter(QObject):
     preferred_language = None
     basemap = None
     crs = QgsCoordinateReferenceSystem("EPSG:3857")
+    extent = QgsRectangle()
     geometries = None
     groups_as_tabs = False
 
@@ -1020,7 +1021,13 @@ class XLSFormConverter(QObject):
         self.basemap = basemap
 
     def set_crs(self, crs):
-        self.crs = crs
+        if crs.isValid():
+            self.crs = crs
+        else:
+            self.crs = QgsCoordinateReferenceSystem("EPSG:3857")
+
+    def set_extent(self, extent):
+        self.extent = extent
 
     def set_geometries(self, geometries):
         self.geometries = geometries
@@ -1647,7 +1654,9 @@ class XLSFormConverter(QObject):
                     )
                 )
 
-        if survey_extent:
+        if not self.extent.isEmpty():
+            survey_extent = self.extent
+        elif survey_extent:
             transform = QgsCoordinateTransform(
                 current_layer[0].crs(),
                 self.output_project.crs(),
@@ -1676,8 +1685,6 @@ class XLSFormConverter(QObject):
                 survey_extent = None
 
         if not survey_extent:
-            print("...")
-            print(self.output_project.crs().authid())
             if self.output_project.crs().authid() == "EPSG:3857":
                 survey_extent = QgsRectangle(-9.88, 33.41, 40.97, 61.11)
             else:
@@ -1710,10 +1717,7 @@ class XLSFormConverter(QObject):
                 self.output_project.crs(),
                 self.output_project.transformContext(),
             )
-            print(survey_extent)
             survey_extent = transform.transformBoundingBox(survey_extent)
-            print(survey_extent)
-            print("---")
 
         self.output_extent = survey_extent
 

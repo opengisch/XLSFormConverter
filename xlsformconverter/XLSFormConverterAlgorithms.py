@@ -7,6 +7,7 @@ from qgis.core import (
     QgsProcessingParameterCrs,
     QgsProcessingParameterDefinition,
     QgsProcessingParameterEnum,
+    QgsProcessingParameterExtent,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterFile,
     QgsProcessingParameterFolderDestination,
@@ -37,6 +38,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
     GROUPS_AS_TABS = "GROUPS_AS_TABS"
     UPLOAD_TO_QFIELDCLOUD = "UPLOAD_TO_QFIELDCLOUD"
     CRS = "CRS"
+    EXTENT = "EXTENT"
     GEOMETRIES = "GEOMETRIES"
     OUTPUT = "OUTPUT"
 
@@ -133,6 +135,14 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.Advanced)
         self.addParameter(param)
 
+        param = QgsProcessingParameterExtent(
+            self.EXTENT,
+            self.tr("Project extent"),
+            optional=True,
+        )
+        param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.Advanced)
+        self.addParameter(param)
+
         param = QgsProcessingParameterFeatureSource(
             self.GEOMETRIES,
             self.tr(
@@ -156,6 +166,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         title = self.parameterAsString(parameters, self.TITLE, context)
         language = self.parameterAsString(parameters, self.LANGUAGE, context)
         crs = self.parameterAsCrs(parameters, self.CRS, context)
+        extent = self.parameterAsExtent(parameters, self.EXTENT, context, crs)
         geometries = self.parameterAsSource(parameters, self.GEOMETRIES, context)
 
         basemap = "OpenStreetMap"
@@ -185,8 +196,14 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         converter.set_basemap(basemap)
         converter.set_geometries(geometries)
         converter.set_groups_as_tabs(groups_as_tabs)
-        if crs.isValid():
-            converter.set_crs(crs)
+        converter.set_crs(crs)
+        converter.set_extent(extent)
+        if not crs.isValid() and not extent.isEmpty():
+            feedback.pushWarning(
+                self.tr(
+                    "Project extent parameter ignored, a required project CRS parameter is missing."
+                )
+            )
 
         project_file = converter.convert(output_directory)
 
