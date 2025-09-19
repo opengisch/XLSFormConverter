@@ -33,3 +33,4 @@ icon=icon.svg
 
 experimental=False
 deprecated=False
+hasProcessingProvider=True
