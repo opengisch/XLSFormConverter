@@ -23,3 +23,13 @@ facilitates its deployment to [QField](https://qfield.org/), an open-source
 fieldwork app for geospatial data collection built on top of QGIS. A deployment
 through QFieldCloud enables multiple collaborators to seamlessly work on the
 same survey layer. This option works alongside the QFieldSync plugin.
+
+
+## Local development of this plugin
+
+To develop locally this plugin, checkout [`XLSFormConverter`](https://github.com/opengisch/XLSFormConverter/) and  [`xlsform2qgis`](https://github.com/opengisch/xlsform2qgis/) repositories.
+
+1. Checkout the [`XLSFormConverter`](https://github.com/opengisch/XLSFormConverter/) by executing `git clone git@github.com:opengisch/XLSFormConverter.git`.
+
+2. Checkout the [`xlsform2qgis`](https://github.com/opengisch/xlsform2qgis/) by following the `README.md` instructions from the respective repository. Ensure you install `xlsform2qgis` as locally editable module, as per documentation.
+
