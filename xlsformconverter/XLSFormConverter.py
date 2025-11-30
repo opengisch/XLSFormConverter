@@ -979,6 +979,11 @@ class XLSFormConverter(QObject):
             r"today\(\)", r"format_date(now(),'yyyy-MM-dd')", expression
         )
 
+        # string-length(...) to length(...)
+        expression = re.sub(
+            r"string-length\s*\(\s*([^\)]+)\)", r"length(\1)", expression
+        )
+
         # selected(1, 2) to 1 = 2
         expression = re.sub(
             r"selected\s*\(\s*(\$\{[^}]+})\,([^)]+)\)", r"\1 = \2", expression
