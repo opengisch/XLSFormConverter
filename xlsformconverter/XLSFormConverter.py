@@ -1726,6 +1726,9 @@ class XLSFormConverter(QObject):
 
         self.output_extent = survey_extent
 
+        # Set QField state to digitize when first opening the generated project
+        self.output_project.writeEntry("qfieldsync", "initialMapMode", "digitize")
+
         if self.output_project.crs().authid() == "EPSG:3857":
             # Display coordinates in WGS84 to provide a more useful experience for the average person
             self.output_project.displaySettings().setCoordinateType(
