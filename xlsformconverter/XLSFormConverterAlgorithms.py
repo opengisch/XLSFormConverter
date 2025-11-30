@@ -16,7 +16,7 @@ from qgis.core import (
 from qgis.PyQt.QtCore import QCoreApplication, QEventLoop
 from qgis.PyQt.QtGui import QIcon
 
-from .XLSFormConverter import XLSFormConverter
+from xlsform2qgis import XLSFormConverter
 
 QFIELDSYNC_AVAILABLE = True
 try:
