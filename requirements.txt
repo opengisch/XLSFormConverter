@@ -1,2 +1,2 @@
-# NOTE `libqfielsync` version should be defined in the `*.tar.gz` format, not `git+https://` to make `wheel` happy
-libqfieldsync @ https://github.com/opengisch/xlsform2qgis/archive/7fd7d726cab6636bfb650d1fcd9e1b8c2cc589af.tar.gz
+# NOTE `xlsform2qgis` version should be defined in the `*.tar.gz` format, not `git+https://` to make `wheel` happy
+xlsform2qgis @ https://github.com/opengisch/xlsform2qgis/archive/7fd7d726cab6636bfb650d1fcd9e1b8c2cc589af.tar.gz
