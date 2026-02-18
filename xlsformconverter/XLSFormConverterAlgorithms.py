@@ -1,11 +1,10 @@
 import os
 
 from qgis.core import (
-    QgsProcessing,
+    Qgis,
     QgsProcessingAlgorithm,
     QgsProcessingParameterBoolean,
     QgsProcessingParameterCrs,
-    QgsProcessingParameterDefinition,
     QgsProcessingParameterEnum,
     QgsProcessingParameterExtent,
     QgsProcessingParameterFeatureSource,
@@ -70,7 +69,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(__file__), "icon.svg"))
 
-    def initAlgorithm(self, config=None):
+    def initAlgorithm(self, configuration=None):
         self.addParameter(
             QgsProcessingParameterFile(
                 self.INPUT,
@@ -132,7 +131,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
             self.tr("Project CRS"),
             optional=True,
         )
-        param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.Advanced)
+        param.setFlags(param.flags() | Qgis.ProcessingParameterFlag.Advanced)
         self.addParameter(param)
 
         param = QgsProcessingParameterExtent(
@@ -140,7 +139,7 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
             self.tr("Project extent"),
             optional=True,
         )
-        param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.Advanced)
+        param.setFlags(param.flags() | Qgis.ProcessingParameterFlag.Advanced)
         self.addParameter(param)
 
         param = QgsProcessingParameterFeatureSource(
@@ -148,10 +147,10 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
             self.tr(
                 "Pre-fill project with features' geometries and matching attributes"
             ),
-            types=[QgsProcessing.SourceType.VectorAnyGeometry],
+            types=[Qgis.ProcessingSourceType.VectorAnyGeometry],
             optional=True,
         )
-        param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.Advanced)
+        param.setFlags(param.flags() | Qgis.ProcessingParameterFlag.Advanced)
         self.addParameter(param)
 
         self.addParameter(
@@ -162,6 +161,8 @@ class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
+        assert feedback
+
         xlsform_file = self.parameterAsString(parameters, self.INPUT, context)
         title = self.parameterAsString(parameters, self.TITLE, context)
         language = self.parameterAsString(parameters, self.LANGUAGE, context)
