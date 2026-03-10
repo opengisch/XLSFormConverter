@@ -1,7 +1,12 @@
 import os
+from pathlib import Path
+from typing import Any, cast
+
 
 from qgis.core import (
     Qgis,
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
     QgsProcessingAlgorithm,
     QgsProcessingParameterBoolean,
     QgsProcessingParameterCrs,
@@ -11,11 +16,20 @@ from qgis.core import (
     QgsProcessingParameterFile,
     QgsProcessingParameterFolderDestination,
     QgsProcessingParameterString,
+    QgsProcessingFeedback,
+    QgsProcessingContext,
+    QgsFeatureRequest,
+    QgsProject,
+    QgsRectangle,
+    QgsVectorLayer,
+    QgsVectorLayerUtils,
+    QgsFeatureSink,
 )
 from qgis.PyQt.QtCore import QCoreApplication, QEventLoop
 from qgis.PyQt.QtGui import QIcon
 
-from xlsform2qgis.converter import XLSFormConverter
+# from xlsform2qgis.qgis_utils import load_features, set_project_extent
+from xlsform2qgis.type_defs import WeakXlsformSettings, ConverterSettings
 
 QFIELDSYNC_AVAILABLE = True
 try:
@@ -38,14 +52,14 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
     UPLOAD_TO_QFIELDCLOUD = "UPLOAD_TO_QFIELDCLOUD"
     CRS = "CRS"
     EXTENT = "EXTENT"
-    GEOMETRIES = "GEOMETRIES"
+    FEATURES = "FEATURES"
     OUTPUT = "OUTPUT"
 
     def tr(self, string):
         return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
-        return XLSFormConverterAlgorithm()
+        return XlsformConverterAlgorithm()
 
     def name(self):
         return "xlsformconverter"
@@ -143,9 +157,9 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(param)
 
         param = QgsProcessingParameterFeatureSource(
-            self.GEOMETRIES,
+            self.FEATURES,
             self.tr(
-                "Pre-fill project with features' geometries and matching attributes"
+                "Pre-fill project's survey with features' geometries and matching attributes"
             ),
             types=[Qgis.ProcessingSourceType.VectorAnyGeometry],
             optional=True,
@@ -160,75 +174,150 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-    def processAlgorithm(self, parameters, context, feedback):
+    def _get_basemap_url(self, index: int) -> str:
+        if index == 0:
+            return "type=xyz&tilePixelRatio=1&url=https://tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0&crs=EPSG3857"
+        elif index == 1:
+            return "type=xyz&tilePixelRatio=1&url=https://a.tile.openstreetmap.fr/hot/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0&crs=EPSG3857"
+        else:
+            raise ValueError(f"Unsupported basemap index: {index}")
+
+    def processAlgorithm(
+        self,
+        parameters: dict[str, Any],
+        context: QgsProcessingContext,
+        feedback: QgsProcessingFeedback | None,
+    ) -> dict[str, Any]:
         assert feedback
 
-        xlsform_file = self.parameterAsString(parameters, self.INPUT, context)
-        title = self.parameterAsString(parameters, self.TITLE, context)
-        language = self.parameterAsString(parameters, self.LANGUAGE, context)
-        crs = self.parameterAsCrs(parameters, self.CRS, context)
-        extent = self.parameterAsExtent(parameters, self.EXTENT, context, crs)
-        geometries = self.parameterAsSource(parameters, self.GEOMETRIES, context)
+        from xlsform2qgis.qgis_utils import LoggingSignals
 
-        basemap = "OpenStreetMap"
+        # Setup logging signals
+        logging_signals = LoggingSignals()
+        logging_signals.debug.connect(lambda msg: feedback.pushDebugInfo(msg))
+        logging_signals.info.connect(lambda msg: feedback.pushInfo(msg))
+        logging_signals.warning.connect(lambda msg: feedback.pushWarning(msg))
+        logging_signals.error.connect(lambda msg: feedback.reportError(msg))
+
+        xlsform_filename = self.parameterAsString(parameters, self.INPUT, context)
+        survey_features = self.parameterAsSource(parameters, self.FEATURES, context)
+        project_title = self.parameterAsString(parameters, self.TITLE, context)
+        default_language = self.parameterAsString(parameters, self.LANGUAGE, context)
+        project_crs = self.parameterAsCrs(parameters, self.CRS, context)
+        project_extent = self.parameterAsExtent(
+            parameters, self.EXTENT, context, project_crs
+        )
         basemap_index = self.parameterAsEnum(parameters, self.BASEMAP, context)
-        if basemap_index == 1:
-            basemap = "HOT"
-
         groups_as_tabs = self.parameterAsBoolean(
             parameters, self.GROUPS_AS_TABS, context
         )
         upload_to_qfieldcloud = self.parameterAsBoolean(
             parameters, self.UPLOAD_TO_QFIELDCLOUD, context
         )
-        output_directory = self.parameterAsString(parameters, self.OUTPUT, context)
+        output_dir = self.parameterAsString(parameters, self.OUTPUT, context)
 
-        converter = XLSFormConverter(xlsform_file)
-        if not converter.is_valid():
-            feedback.reportError(self.tr("The provided XLSForm is invalid, aborting."))
-            return {}
+        # Prepare settings
+        xlsform_settings: WeakXlsformSettings = {}
+        if project_title:
+            xlsform_settings["form_title"] = project_title
 
-        converter.info.connect(lambda message: feedback.pushInfo(message))
-        converter.warning.connect(lambda message: feedback.pushWarning(message))
-        converter.error.connect(lambda message: feedback.reportError(message))
+        if default_language:
+            xlsform_settings["default_language"] = default_language
 
-        converter.set_custom_title(title)
-        converter.set_preferred_language(language)
-        converter.set_basemap(basemap)
-        converter.set_geometries(geometries)
-        converter.set_groups_as_tabs(groups_as_tabs)
-        converter.set_crs(crs)
-        converter.set_extent(extent)
-        if not crs.isValid() and not extent.isEmpty():
+        converter_settings: ConverterSettings = {}
+        converter_settings["xlsform_settings"] = xlsform_settings
+        # TODO: set author from QGIS metadata
+        converter_settings["author"] = ""
+
+        if groups_as_tabs:
+            converter_settings["form_group_type"] = "tab"
+        else:
+            converter_settings["form_group_type"] = "group_box"
+
+        converter_settings["basemap_url"] = self._get_basemap_url(basemap_index)
+
+        if project_crs and project_crs.isValid():
+            converter_settings["crs"] = project_crs.authid()
+        else:
             feedback.pushWarning(
                 self.tr(
-                    "Project extent parameter ignored, a required project CRS parameter is missing."
+                    "Project CRS parameter is invalid, defaulting to EPSG:3857. This may lead to unexpected behavior when using the generated project alongside layers in different CRSs or when using the project extent parameter."
                 )
             )
 
-        project_file = converter.convert(output_directory)
+        if not project_extent.isEmpty():
+            # TODO @suricactus: decide in which CRS
+            converter_settings["extent"] = project_extent.asWktCoordinates()
+        else:
+            feedback.pushWarning(
+                self.tr("Project extent parameter ignored, invalid extent.")
+            )
+        # / Prepare settings
 
-        if project_file and upload_to_qfieldcloud:
-            for root, dirs, files in os.walk(output_directory):
-                for file in files:
-                    if file.lower().endswith(".qgs") or file.lower().endswith(".qgz"):
-                        if os.path.join(root, file) != project_file:
-                            feedback.pushWarning(
-                                self.tr(
-                                    "Upload to QFieldCloud skipped as the output directory already contains a project file."
-                                )
-                            )
-                            upload_to_qfieldcloud = False
-                            break
-                if not upload_to_qfieldcloud:
-                    break
+        self.convertProject(xlsform_filename, output_dir, converter_settings, survey_features, feedback)
 
-            if upload_to_qfieldcloud:
-                self.uploadToQFieldCloud(output_directory, project_file, feedback)
+        # Upload to QFieldCloud
+        if upload_to_qfieldcloud:
+            qgis_project_files = [
+                f
+                for pattern in ("*.qgs", "*.qgz")
+                for f in Path(output_dir).rglob(pattern)
+            ]
 
-        return {self.OUTPUT: output_directory}
+            if len(qgis_project_files) > 1:
+                feedback.pushWarning(
+                    self.tr(
+                        "Upload to QFieldCloud skipped as the output directory contains multiple QGIS project files, making it ambiguous which one to upload."
+                    )
+                )
+            elif len(qgis_project_files) == 0:
+                feedback.pushWarning(
+                    self.tr(
+                        "Upload to QFieldCloud skipped as no QGIS project file was found in the output directory after conversion."
+                    )
+                )
+            else:
+                self.uploadToQFieldCloud(
+                    output_dir, str(qgis_project_files[0]), feedback
+                )
+        # / Upload to QFieldCloud
 
-    def uploadToQFieldCloud(self, output_directory, project_file, feedback):
+        return {self.OUTPUT: output_dir}
+
+    def convertProject(
+        self,
+        xlsform_filename: str,
+        output_dir: str,
+        converter_settings: ConverterSettings,
+        survey_features: QgsFeatureSink,
+        feedback: QgsProcessingFeedback,
+    ) -> None:
+        from xlsform2qgis.converter import convert_xlsform_to_qgis_project, XlsformConverterError
+
+        try:
+            project_filename = convert_xlsform_to_qgis_project(
+                xlsform_filename,
+                output_dir=output_dir,
+                settings=converter_settings,
+                skip_failed_expressions=True,
+                # NOTE: set to a temporary file so one can inspect and debug the generated JSON
+                json_filename="/tmp/xlsform.json",
+            )
+        except (FileNotFoundError, XlsformConverterError) as err:
+            feedback.reportError(str(err), True)
+
+            return
+
+        # set_survey_features(creator._project, survey_features, feedback)
+
+        feedback.pushInfo(
+            self.tr("XLSForm converted and saved as a QGIS project at {}").format(
+                project_filename
+            )
+        )
+
+
+    def uploadToQFieldCloud(self, output_dir, project_file, feedback):
         if not QFIELDSYNC_AVAILABLE:
             feedback.pushWarning(
                 self.tr(
@@ -292,7 +381,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
             return
 
         loop = QEventLoop()
-        cloud_project = CloudProject({**payload, "local_dir": output_directory})
+        cloud_project = CloudProject({**payload, "local_dir": output_dir})
         cloud_transferrer = CloudTransferrer(nam, cloud_project)
         cloud_transferrer.finished.connect(loop.quit)
         cloud_transferrer.sync(list(cloud_project.files_to_sync), [], [], [])
