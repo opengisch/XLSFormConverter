@@ -29,7 +29,7 @@ except ImportError:
     QFIELDSYNC_AVAILABLE = False
 
 
-class XLSFormConverterAlgorithm(QgsProcessingAlgorithm):
+class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
     INPUT = "INPUT"
     TITLE = "TITLE"
     LANGUAGE = "LANGUAGE"

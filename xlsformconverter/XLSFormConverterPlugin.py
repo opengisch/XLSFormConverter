@@ -18,7 +18,7 @@ import os
 from qgis.core import QgsApplication, QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
-from .XLSFormConverterAlgorithms import XLSFormConverterAlgorithm
+from .XLSFormConverterAlgorithms import XlsformConverterAlgorithm
 
 VERSION = "1.1.1"
 
@@ -29,7 +29,7 @@ class XLSFormConverterProvider(QgsProcessingProvider):
         self.iface = iface
 
     def loadAlgorithms(self):
-        for alg in [XLSFormConverterAlgorithm]:
+        for alg in [XlsformConverterAlgorithm]:
             self.addAlgorithm(alg())
 
     def id(self):
