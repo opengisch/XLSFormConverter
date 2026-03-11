@@ -1,13 +1,21 @@
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
+from venv import logger
 
-
+from convert2qgis.xlsform2qgis.converter import (
+    XlsformConverterError,
+    convert_xlsform_to_qgis_project,
+)
+from convert2qgis.xlsform2qgis.qgis_utils import set_survey_features
+from convert2qgis.xlsform2qgis.type_defs import ConverterSettings, WeakXlsformSettings
 from qgis.core import (
     Qgis,
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
     QgsProcessingAlgorithm,
+    QgsProcessingContext,
+    QgsProcessingFeatureSource,
+    QgsProcessingFeedback,
     QgsProcessingParameterBoolean,
     QgsProcessingParameterCrs,
     QgsProcessingParameterEnum,
@@ -16,21 +24,10 @@ from qgis.core import (
     QgsProcessingParameterFile,
     QgsProcessingParameterFolderDestination,
     QgsProcessingParameterString,
-    QgsProcessingFeedback,
-    QgsProcessingContext,
-    QgsFeatureRequest,
     QgsProject,
-    QgsRectangle,
-    QgsVectorLayer,
-    QgsVectorLayerUtils,
-    QgsFeatureSink,
 )
 from qgis.PyQt.QtCore import QCoreApplication, QEventLoop
 from qgis.PyQt.QtGui import QIcon
-
-from xlsform2qgis.converter import convert_xlsform_to_qgis_project, XlsformConverterError
-from xlsform2qgis.qgis_utils import set_survey_features, set_project_extent
-from xlsform2qgis.type_defs import WeakXlsformSettings, ConverterSettings
 
 QFIELDSYNC_AVAILABLE = True
 try:
@@ -44,7 +41,33 @@ except ImportError:
     QFIELDSYNC_AVAILABLE = False
 
 
+def decorator_connect_logging(func):
+    def wrapper(self, *args, **kwargs):
+        feedback = args[-1]
+        if not isinstance(feedback, QgsProcessingFeedback):
+            logger.warning(
+                "Feedback object not found in algorithm parameters, cannot connect logging signals."
+            )
+
+            raise RuntimeError(
+                "Feedback object not found in algorithm parameters, cannot connect logging signals."
+            )
+
+        self._connect_logging(feedback)
+
+        try:
+            result = func(self, *args, **kwargs)
+        finally:
+            self._disconnect_logging()
+
+        return result
+
+    return wrapper
+
+
 class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
+    _logging_callabcks: dict[str, Callable[[str], None]] = {}
+
     INPUT = "INPUT"
     TITLE = "TITLE"
     LANGUAGE = "LANGUAGE"
@@ -183,6 +206,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         else:
             raise ValueError(f"Unsupported basemap index: {index}")
 
+    @decorator_connect_logging
     def processAlgorithm(
         self,
         parameters: dict[str, Any],
@@ -190,15 +214,6 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         feedback: QgsProcessingFeedback | None,
     ) -> dict[str, Any]:
         assert feedback
-
-        from xlsform2qgis.qgis_utils import LoggingSignals
-
-        # Setup logging signals
-        logging_signals = LoggingSignals()
-        logging_signals.debug.connect(lambda msg: feedback.pushDebugInfo(msg))
-        logging_signals.info.connect(lambda msg: feedback.pushInfo(msg))
-        logging_signals.warning.connect(lambda msg: feedback.pushWarning(msg))
-        logging_signals.error.connect(lambda msg: feedback.reportError(msg))
 
         xlsform_filename = self.parameterAsString(parameters, self.INPUT, context)
         survey_features = self.parameterAsSource(parameters, self.FEATURES, context)
@@ -255,7 +270,9 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
             )
         # / Prepare settings
 
-        self.convertProject(xlsform_filename, output_dir, converter_settings, survey_features, feedback)
+        self.convertProject(
+            xlsform_filename, output_dir, converter_settings, survey_features, feedback
+        )
 
         # Upload to QFieldCloud
         if upload_to_qfieldcloud:
@@ -290,7 +307,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         xlsform_filename: str,
         output_dir: str,
         converter_settings: ConverterSettings,
-        survey_features: QgsFeatureSink,
+        survey_features: QgsProcessingFeatureSource | None,
         feedback: QgsProcessingFeedback,
     ) -> None:
         try:
@@ -311,14 +328,14 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
 
         assert project
 
-        set_survey_features(project, survey_features, feedback)
+        if survey_features is not None and survey_features.featureCount() > 0:
+            set_survey_features(project, survey_features, feedback)
 
         feedback.pushInfo(
             self.tr("XLSForm converted and saved as a QGIS project at {}").format(
                 project_filename
             )
         )
-
 
     def uploadToQFieldCloud(self, output_dir, project_file, feedback):
         if not QFIELDSYNC_AVAILABLE:
@@ -389,3 +406,40 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         cloud_transferrer.finished.connect(loop.quit)
         cloud_transferrer.sync(list(cloud_project.files_to_sync), [], [], [])
         loop.exec()
+
+    def _connect_logging(self, feedback):
+        from convert2qgis.xlsform2qgis.qgis_utils import LoggingSignals
+
+        self._logging_callabcks = {
+            "debug": lambda msg: feedback.pushDebugInfo(msg),
+            "info": lambda msg: feedback.pushInfo(msg),
+            "warning": lambda msg: feedback.pushWarning(msg),
+            "error": lambda msg: feedback.reportError(msg),
+        }
+
+        # Setup logging signals
+        logging_signals = LoggingSignals()
+        logging_signals.debug.connect(self._logging_callabcks["debug"])
+        logging_signals.info.connect(self._logging_callabcks["info"])
+        logging_signals.warning.connect(self._logging_callabcks["warning"])
+        logging_signals.error.connect(self._logging_callabcks["error"])
+
+    def _disconnect_logging(self):
+        from convert2qgis.xlsform2qgis.qgis_utils import LoggingSignals
+
+        if not self._logging_callabcks:
+            logger.warning(
+                "Logging callbacks not found, cannot disconnect logging signals."
+            )
+
+            raise RuntimeError(
+                "Logging callbacks not found, cannot disconnect logging signals."
+            )
+
+        logging_signals = LoggingSignals()
+        logging_signals.debug.disconnect(self._logging_callabcks["debug"])
+        logging_signals.info.disconnect(self._logging_callabcks["info"])
+        logging_signals.warning.disconnect(self._logging_callabcks["warning"])
+        logging_signals.error.disconnect(self._logging_callabcks["error"])
+
+        self._logging_callabcks = {}

@@ -32,4 +32,3 @@ To develop locally this plugin, checkout [`XLSFormConverter`](https://github.com
 1. Checkout the [`XLSFormConverter`](https://github.com/opengisch/XLSFormConverter/) by executing `git clone git@github.com:opengisch/XLSFormConverter.git`.
 
 2. Checkout the [`xlsform2qgis`](https://github.com/opengisch/xlsform2qgis/) by following the `README.md` instructions from the respective repository. Ensure you install `xlsform2qgis` as locally editable module, as per documentation.
-
