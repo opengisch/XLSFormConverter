@@ -28,7 +28,8 @@ from qgis.core import (
 from qgis.PyQt.QtCore import QCoreApplication, QEventLoop
 from qgis.PyQt.QtGui import QIcon
 
-# from xlsform2qgis.qgis_utils import load_features, set_project_extent
+from xlsform2qgis.converter import convert_xlsform_to_qgis_project, XlsformConverterError
+from xlsform2qgis.qgis_utils import set_survey_features, set_project_extent
 from xlsform2qgis.type_defs import WeakXlsformSettings, ConverterSettings
 
 QFIELDSYNC_AVAILABLE = True
@@ -292,8 +293,6 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         survey_features: QgsFeatureSink,
         feedback: QgsProcessingFeedback,
     ) -> None:
-        from xlsform2qgis.converter import convert_xlsform_to_qgis_project, XlsformConverterError
-
         try:
             project_filename = convert_xlsform_to_qgis_project(
                 xlsform_filename,
@@ -308,7 +307,11 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
 
             return
 
-        # set_survey_features(creator._project, survey_features, feedback)
+        project = QgsProject.instance()
+
+        assert project
+
+        set_survey_features(project, survey_features, feedback)
 
         feedback.pushInfo(
             self.tr("XLSForm converted and saved as a QGIS project at {}").format(
