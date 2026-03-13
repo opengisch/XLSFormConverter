@@ -58,7 +58,8 @@ def decorator_connect_logging(func):
         try:
             result = func(self, *args, **kwargs)
         finally:
-            self._disconnect_logging()
+            pass
+            # self._disconnect_logging()
 
         return result
 
@@ -424,23 +425,3 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         logging_signals.info.connect(self._logging_callabcks["info"])
         logging_signals.warning.connect(self._logging_callabcks["warning"])
         logging_signals.error.connect(self._logging_callabcks["error"])
-
-    def _disconnect_logging(self):
-        from convert2qgis.xlsform2qgis.qgis_utils import LoggingSignals
-
-        if not self._logging_callabcks:
-            logger.warning(
-                "Logging callbacks not found, cannot disconnect logging signals."
-            )
-
-            raise RuntimeError(
-                "Logging callbacks not found, cannot disconnect logging signals."
-            )
-
-        logging_signals = LoggingSignals()
-        logging_signals.debug.disconnect(self._logging_callabcks["debug"])
-        logging_signals.info.disconnect(self._logging_callabcks["info"])
-        logging_signals.warning.disconnect(self._logging_callabcks["warning"])
-        logging_signals.error.disconnect(self._logging_callabcks["error"])
-
-        self._logging_callabcks = {}
