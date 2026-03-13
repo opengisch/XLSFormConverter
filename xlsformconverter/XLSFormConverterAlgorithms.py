@@ -270,39 +270,16 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
             )
         # / Prepare settings
 
-        self.convertProject(
+        self._convert_project(
             xlsform_filename, output_dir, converter_settings, survey_features, feedback
         )
 
-        # Upload to QFieldCloud
         if upload_to_qfieldcloud:
-            qgis_project_files = [
-                f
-                for pattern in ("*.qgs", "*.qgz")
-                for f in Path(output_dir).rglob(pattern)
-            ]
-
-            if len(qgis_project_files) > 1:
-                feedback.pushWarning(
-                    self.tr(
-                        "Upload to QFieldCloud skipped as the output directory contains multiple QGIS project files, making it ambiguous which one to upload."
-                    )
-                )
-            elif len(qgis_project_files) == 0:
-                feedback.pushWarning(
-                    self.tr(
-                        "Upload to QFieldCloud skipped as no QGIS project file was found in the output directory after conversion."
-                    )
-                )
-            else:
-                self.uploadToQFieldCloud(
-                    output_dir, str(qgis_project_files[0]), feedback
-                )
-        # / Upload to QFieldCloud
+            self._upload_to_qfieldcloud(output_dir, feedback)
 
         return {self.OUTPUT: output_dir}
 
-    def convertProject(
+    def _convert_project(
         self,
         xlsform_filename: str,
         output_dir: str,
@@ -337,7 +314,9 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-    def uploadToQFieldCloud(self, output_dir, project_file, feedback):
+    def _upload_to_qfieldcloud(
+        self, output_dir: str | Path, feedback: QgsProcessingFeedback
+    ) -> None:
         if not QFIELDSYNC_AVAILABLE:
             feedback.pushWarning(
                 self.tr(
@@ -345,6 +324,28 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
                 )
             )
             return
+
+        qgis_project_files = [
+            f for pattern in ("*.qgs", "*.qgz") for f in Path(output_dir).rglob(pattern)
+        ]
+
+        if len(qgis_project_files) > 1:
+            feedback.pushWarning(
+                self.tr(
+                    "Upload to QFieldCloud skipped as the output directory contains multiple QGIS project files, making it ambiguous which one to upload."
+                )
+            )
+            return
+
+        if len(qgis_project_files) == 0:
+            feedback.pushWarning(
+                self.tr(
+                    "Upload to QFieldCloud skipped as no QGIS project file was found in the output directory after conversion."
+                )
+            )
+            return
+
+        project_file = qgis_project_files[0]
 
         nam = CloudNetworkAccessManager()
         cfg = nam.auth()
