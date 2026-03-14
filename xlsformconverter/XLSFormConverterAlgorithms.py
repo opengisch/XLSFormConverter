@@ -307,7 +307,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         assert project
 
         if survey_features is not None and survey_features.featureCount() > 0:
-            set_survey_features(project, survey_features, feedback)
+            set_survey_features(project, survey_features)
 
         feedback.pushInfo(
             self.tr("XLSForm converted and saved as a QGIS project at {}").format(
