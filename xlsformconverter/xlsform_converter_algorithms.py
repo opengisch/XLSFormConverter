@@ -79,6 +79,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
     FEATURES = "FEATURES"
     SHOW_UNIQUE_LABEL = "SHOW_UNIQUE_LABEL"
     OUTPUT = "OUTPUT"
+    OPEN_PROJECT_AFTER_CONVERSION = "OPEN_PROJECT_AFTER_CONVERSION"
 
     def tr(self, string):
         return QCoreApplication.translate("Processing", string)
@@ -212,6 +213,13 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.OPEN_PROJECT_AFTER_CONVERSION,
+                self.tr("Open project after conversion"),
+            )
+        )
+
     def _get_basemap_url(self, index: int) -> str:
         if index == 0:
             return "type=xyz&tilePixelRatio=1&url=https://tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0&crs=EPSG3857"
@@ -248,6 +256,9 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
             parameters, self.SHOW_UNIQUE_LABEL, context
         )
         output_dir = self.parameterAsString(parameters, self.OUTPUT, context)
+        open_project_after_conversion = self.parameterAsBoolean(
+            parameters, self.OPEN_PROJECT_AFTER_CONVERSION, context
+        )
 
         # Prepare settings
         xlsform_settings: WeakXlsformSettings = {}
@@ -319,7 +330,12 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         # / Prepare settings
 
         self._convert_project(
-            xlsform_filename, output_dir, converter_settings, survey_features, feedback
+            xlsform_filename,
+            output_dir,
+            converter_settings,
+            survey_features,
+            feedback,
+            open_project_after_conversion,
         )
 
         if upload_to_qfieldcloud:
@@ -334,6 +350,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         converter_settings: ConverterSettings,
         survey_features: QgsProcessingFeatureSource | None,
         feedback: QgsProcessingFeedback,
+        open_project_after_conversion: bool,
     ) -> None:
         try:
             project = convert_xlsform_to_qgis_project(
@@ -360,6 +377,37 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
                 full_filename
             ),
         )
+
+        if open_project_after_conversion:
+            global_project = QgsProject.instance()
+
+            if not global_project:
+                feedback.pushWarning(
+                    self.tr(
+                        "No global QGIS project instance found, cannot open the generated project after conversion."
+                    )
+                )
+
+                return
+
+            if global_project.isDirty():
+                feedback.pushWarning(
+                    self.tr(
+                        "Current project has unsaved changes, cannot open the generated project after conversion without losing those changes. "
+                        "Please save the current project before running the conversion if you want the generated project to be opened automatically after conversion."
+                    )
+                )
+
+                return
+
+            global_project.clear()
+
+            if not global_project.read(str(full_filename)):
+                feedback.pushWarning(
+                    self.tr(
+                        "Failed to open the generated project after conversion, please try opening it manually from {}"
+                    ).format(full_filename)
+                )
 
     def _upload_to_qfieldcloud(
         self, output_dir: str | Path, feedback: QgsProcessingFeedback
