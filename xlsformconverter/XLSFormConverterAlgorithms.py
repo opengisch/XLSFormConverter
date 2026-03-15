@@ -2,13 +2,12 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from venv import logger
 
 from convert2qgis.xlsform2qgis.converter import (
     XlsformConverterError,
     convert_xlsform_to_qgis_project,
 )
-from convert2qgis.xlsform2qgis.qgis_utils import set_survey_features
+from convert2qgis.xlsform2qgis.qgis_utils import transform_bounding_box
 from convert2qgis.xlsform2qgis.type_defs import ConverterSettings, WeakXlsformSettings
 from qgis.core import (
     Qgis,
@@ -45,7 +44,7 @@ def decorator_connect_logging(func):
     def wrapper(self, *args, **kwargs):
         feedback = args[-1]
         if not isinstance(feedback, QgsProcessingFeedback):
-            logger.warning(
+            feedback.pushWarning(
                 "Feedback object not found in algorithm parameters, cannot connect logging signals."
             )
 
@@ -262,13 +261,42 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
                 )
             )
 
-        if not project_extent.isEmpty():
-            # TODO @suricactus: decide in which CRS
-            converter_settings["extent"] = project_extent.asWktCoordinates()
-        else:
+            converter_settings["crs"] = "EPSG:3857"
+
+        if project_extent.isEmpty():
             feedback.pushWarning(
                 self.tr("Project extent parameter ignored, invalid extent.")
             )
+
+            if (
+                survey_features is not None
+                and survey_features.featureCount() > 0
+                and not survey_features.sourceExtent().isEmpty()
+                and survey_features.sourceExtent.isFinite()
+                and survey_features.sourceCrs().isValid()
+            ):
+                project_extent = transform_bounding_box(
+                    survey_features.sourceExtent(),
+                    survey_features.sourceCrs(),
+                    project_crs,
+                    QgsProject(),
+                )
+
+                if project_extent.isFinite():
+                    converter_settings["extent"] = project_extent.asWktCoordinates()
+                else:
+                    feedback.pushWarning(
+                        self.tr(
+                            "Failed to transform features extent, default will be used."
+                        )
+                    )
+            else:
+                feedback.pushWarning(
+                    self.tr("Cannot use features extent, default will be used.")
+                )
+        else:
+            # no need to transform the extent to another CRS, as we already did in `parameterAsExtent`
+            converter_settings["extent"] = project_extent.asWktCoordinates()
         # / Prepare settings
 
         self._convert_project(
@@ -289,11 +317,12 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         feedback: QgsProcessingFeedback,
     ) -> None:
         try:
-            project_filename = convert_xlsform_to_qgis_project(
+            project = convert_xlsform_to_qgis_project(
                 xlsform_filename,
                 output_dir=output_dir,
                 settings=converter_settings,
                 skip_failed_expressions=True,
+                survey_features=survey_features,
                 # NOTE: set to a temporary file so one can inspect and debug the generated JSON
                 json_filename="/tmp/xlsform.json",
             )
@@ -302,16 +331,9 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
 
             return
 
-        project = QgsProject.instance()
-
-        assert project
-
-        if survey_features is not None and survey_features.featureCount() > 0:
-            set_survey_features(project, survey_features)
-
         feedback.pushInfo(
             self.tr("XLSForm converted and saved as a QGIS project at {}").format(
-                project_filename
+                project.fileName()
             )
         )
 
@@ -354,6 +376,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         password = cfg.config("password")
         if not nam.has_token():
             feedback.pushInfo(self.tr("Logging into QFieldCloud"))
+
             if not username or not password:
                 feedback.pushWarning(
                     self.tr(
