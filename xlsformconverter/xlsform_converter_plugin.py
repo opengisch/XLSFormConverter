@@ -18,12 +18,12 @@ import os
 from qgis.core import QgsApplication, QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
-from .XLSFormConverterAlgorithms import XlsformConverterAlgorithm
+from .xlsform_converter_algorithms import XlsformConverterAlgorithm
 
 VERSION = "1.1.1"
 
 
-class XLSFormConverterProvider(QgsProcessingProvider):
+class XlsformConverterProvider(QgsProcessingProvider):
     def __init__(self, iface):
         QgsProcessingProvider.__init__(self)
         self.iface = iface
@@ -48,12 +48,12 @@ class XLSFormConverterProvider(QgsProcessingProvider):
         return VERSION
 
 
-class XLSFormConverterPlugin:
+class XlsformConverterPlugin:
     def __init__(self, iface):
         super().__init__()
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
-        self.provider = XLSFormConverterProvider(self.iface)
+        self.provider = XlsformConverterProvider(self.iface)
 
     def initGui(self):
         self.initProcessing()

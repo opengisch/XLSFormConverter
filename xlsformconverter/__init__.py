@@ -33,14 +33,12 @@ for module_name in module_names:
         importlib.reload(sys.modules[module_name])
 
 
-# noinspection PyPep8Naming
-def classFactory(iface):  # pylint: disable=invalid-name
+def classFactory(iface):
     """Load plugin.
 
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface
     """
-    #
-    from .XLSFormConverterPlugin import XLSFormConverterPlugin
+    from .xlsform_converter_plugin import XlsformConverterPlugin
 
-    return XLSFormConverterPlugin(iface)
+    return XlsformConverterPlugin(iface)
