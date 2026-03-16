@@ -7,7 +7,7 @@ from convert2qgis.xlsform2qgis.converter import (
     XlsformConverterError,
     convert_xlsform_to_qgis_project,
 )
-from convert2qgis.xlsform2qgis.qgis_utils import transform_bounding_box
+from convert2qgis.xlsform2qgis.qgis_utils import LoggingSignals, transform_bounding_box
 from convert2qgis.xlsform2qgis.type_defs import ConverterSettings, WeakXlsformSettings
 from qgis.core import (
     Qgis,
@@ -433,8 +433,6 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         loop.exec()
 
     def _connect_logging(self, feedback):
-        from convert2qgis.xlsform2qgis.qgis_utils import LoggingSignals
-
         self._logging_callabcks = {
             "debug": lambda msg: feedback.pushDebugInfo(msg),
             "info": lambda msg: feedback.pushInfo(msg),
