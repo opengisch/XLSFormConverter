@@ -3,12 +3,12 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from convert2qgis.xlsform2qgis.converter import (
+from convert2qgis.xlsform2qgis.qgis_utils import LoggingSignals, transform_bounding_box
+from convert2qgis.xlsform2qgis.type_defs import ConverterSettings, WeakXlsformSettings
+from convert2qgis.xlsform2qgis.xlsform2qgis import (
     XlsformConverterError,
     convert_xlsform_to_qgis_project,
 )
-from convert2qgis.xlsform2qgis.qgis_utils import LoggingSignals, transform_bounding_box
-from convert2qgis.xlsform2qgis.type_defs import ConverterSettings, WeakXlsformSettings
 from qgis.core import (
     Qgis,
     QgsProcessingAlgorithm,
