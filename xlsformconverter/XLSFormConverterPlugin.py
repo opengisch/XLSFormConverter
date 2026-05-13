@@ -56,6 +56,9 @@ class XLSFormConverterPlugin:
         self.provider = XLSFormConverterProvider(self.iface)
 
     def initGui(self):
+        self.initProcessing()
+
+    def initProcessing(self):
         QgsApplication.processingRegistry().addProvider(self.provider)
 
     def unload(self):
