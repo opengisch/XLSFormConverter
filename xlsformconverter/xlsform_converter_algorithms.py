@@ -266,10 +266,16 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
 
         if project_extent.isEmpty():
             feedback.pushWarning(
-                self.tr("Project extent parameter ignored, invalid extent.")
+                self.tr("Project extent parameter ignored, invalid or missing extent.")
             )
 
             if survey_features is not None and survey_features.featureCount() > 0:
+                feedback.pushInfo(
+                    self.tr(
+                        "Project extent parameter not set, using provided features extent as project extent."
+                    )
+                )
+
                 source_extent = survey_features.sourceExtent()
                 source_crs = survey_features.sourceCrs()
             else:
