@@ -268,16 +268,23 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
                 self.tr("Project extent parameter ignored, invalid extent.")
             )
 
+            if survey_features is not None and survey_features.featureCount() > 0:
+                source_extent = survey_features.sourceExtent()
+                source_crs = survey_features.sourceCrs()
+            else:
+                source_extent = None
+                source_crs = None
+
             if (
-                survey_features is not None
-                and survey_features.featureCount() > 0
-                and not survey_features.sourceExtent().isEmpty()
-                and survey_features.sourceExtent.isFinite()
-                and survey_features.sourceCrs().isValid()
+                source_extent is not None
+                and source_crs is not None
+                and not source_extent.isEmpty()
+                and source_extent.isFinite()
+                and source_crs.isValid()
             ):
                 project_extent = transform_bounding_box(
-                    survey_features.sourceExtent(),
-                    survey_features.sourceCrs(),
+                    source_extent,
+                    source_crs,
                     project_crs,
                     QgsProject(),
                 )
