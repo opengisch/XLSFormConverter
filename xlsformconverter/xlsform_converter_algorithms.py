@@ -347,10 +347,15 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
 
             return
 
-        feedback.pushInfo(
+        full_filename = Path(output_dir).joinpath(project.fileName())
+
+        feedback.pushFormattedMessage(
+            self.tr(
+                "XLSForm converted and saved as a QGIS project at <a href='file://{0}'>{0}</a>"
+            ).format(full_filename),
             self.tr("XLSForm converted and saved as a QGIS project at {}").format(
-                project.fileName()
-            )
+                full_filename
+            ),
         )
 
     def _upload_to_qfieldcloud(
