@@ -66,7 +66,7 @@ def decorator_connect_logging(func):
 
 
 class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
-    _logging_callabcks: dict[str, Callable[[str], None]] = {}
+    _logging_callbacks: dict[str, Callable[[str], None]] = {}
 
     INPUT = "INPUT"
     TITLE = "TITLE"
@@ -433,7 +433,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         loop.exec()
 
     def _connect_logging(self, feedback):
-        self._logging_callabcks = {
+        self._logging_callbacks = {
             "debug": lambda msg: feedback.pushDebugInfo(msg),
             "info": lambda msg: feedback.pushInfo(msg),
             "warning": lambda msg: feedback.pushWarning(msg),
@@ -442,7 +442,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
 
         # Setup logging signals
         logging_signals = LoggingSignals()
-        logging_signals.debug.connect(self._logging_callabcks["debug"])
-        logging_signals.info.connect(self._logging_callabcks["info"])
-        logging_signals.warning.connect(self._logging_callabcks["warning"])
-        logging_signals.error.connect(self._logging_callabcks["error"])
+        logging_signals.debug.connect(self._logging_callbacks["debug"])
+        logging_signals.info.connect(self._logging_callbacks["info"])
+        logging_signals.warning.connect(self._logging_callbacks["warning"])
+        logging_signals.error.connect(self._logging_callbacks["error"])
