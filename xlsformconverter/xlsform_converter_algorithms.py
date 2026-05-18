@@ -24,6 +24,7 @@ from qgis.core import (
     QgsProcessingParameterFolderDestination,
     QgsProcessingParameterString,
     QgsProject,
+    QgsRectangle,
 )
 from qgis.PyQt.QtCore import QCoreApplication, QEventLoop
 from qgis.PyQt.QtGui import QIcon
@@ -290,7 +291,15 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
                 )
 
                 if project_extent.isFinite():
-                    converter_settings["extent"] = project_extent.asWktCoordinates()
+                    feedback.pushInfo(
+                        self.tr(
+                            "Set the project extent based on the features extent: {}".format(
+                                project_extent.toString()
+                            )
+                        )
+                    )
+
+                    converter_settings["extent"] = self._rect_to_coords(project_extent)
                 else:
                     feedback.pushWarning(
                         self.tr(
@@ -303,7 +312,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
                 )
         else:
             # no need to transform the extent to another CRS, as we already did in `parameterAsExtent`
-            converter_settings["extent"] = project_extent.asWktCoordinates()
+            converter_settings["extent"] = self._rect_to_coords(project_extent)
         # / Prepare settings
 
         self._convert_project(
@@ -438,6 +447,9 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         cloud_transferrer.finished.connect(loop.quit)
         cloud_transferrer.sync(list(cloud_project.files_to_sync), [], [], [])
         loop.exec()
+
+    def _rect_to_coords(self, rect: QgsRectangle) -> str:
+        return f"{rect.xMinimum()}, {rect.yMinimum()}, {rect.xMaximum()}, {rect.yMaximum()}"
 
     def _connect_logging(self, feedback):
         self._logging_callbacks = {
