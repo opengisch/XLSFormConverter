@@ -265,17 +265,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
             converter_settings["crs"] = "EPSG:3857"
 
         if project_extent.isEmpty():
-            feedback.pushWarning(
-                self.tr("Project extent parameter ignored, invalid or missing extent.")
-            )
-
             if survey_features is not None and survey_features.featureCount() > 0:
-                feedback.pushInfo(
-                    self.tr(
-                        "Project extent parameter not set, using provided features extent as project extent."
-                    )
-                )
-
                 source_extent = survey_features.sourceExtent()
                 source_crs = survey_features.sourceCrs()
             else:
@@ -312,10 +302,6 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
                             "Failed to transform features extent, default will be used."
                         )
                     )
-            else:
-                feedback.pushWarning(
-                    self.tr("Cannot use features extent, default will be used.")
-                )
         else:
             # no need to transform the extent to another CRS, as we already did in `parameterAsExtent`
             converter_settings["extent"] = self._rect_to_coords(project_extent)
