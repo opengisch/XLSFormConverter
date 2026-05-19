@@ -8,8 +8,7 @@ version=dev
 author=OPENGIS.ch
 email=info@opengis.ch
 
-about=
-    XLSForm is a form standard created to help simplify the authoring of forms using a spreadsheet program such as LibreOffice Calc or Microsoft Excel. They are simple to get started with but allow for the authoring of complex forms by someone familiar with the syntax.
+about=XLSForm is a form standard created to help simplify the authoring of forms using a spreadsheet program such as LibreOffice Calc or Microsoft Excel. They are simple to get started with but allow for the authoring of complex forms by someone familiar with the syntax.
 
     The plugin algorithm converts a XLSForm file into a QGIS project containing a survey layer with a feature form reflecting the authored form. This can facilitate the creation of complex feature forms through a simple, well-known format.
 
