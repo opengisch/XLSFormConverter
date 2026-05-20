@@ -245,11 +245,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         converter_settings["xlsform_settings"] = xlsform_settings
         # TODO: set author from QGIS metadata
         converter_settings["author"] = ""
-
-        if groups_as_tabs:
-            converter_settings["form_group_type"] = "tab"
-        else:
-            converter_settings["form_group_type"] = "group_box"
+        converter_settings["use_groups_as_tabs"] = groups_as_tabs
 
         converter_settings["basemap_url"] = self._get_basemap_url(basemap_index)
 
