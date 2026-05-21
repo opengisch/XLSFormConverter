@@ -1,2 +1,2 @@
 # NOTE `convert2qgis` version should be defined in the `*.tar.gz` format, not `git+https://` to make `wheel` happy
-convert2qgis @ https://github.com/opengisch/convert2qgis/archive/7f0f23475e62a3e45ee03f2ff407d48932578105.tar.gz
+convert2qgis @ https://github.com/opengisch/convert2qgis/archive/6e9e16d3fe2a2087dbe69c3554e93572b4e55fdb.tar.gz

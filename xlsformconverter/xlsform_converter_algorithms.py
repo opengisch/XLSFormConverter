@@ -3,10 +3,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from convert2qgis.errors import Convert2QgisBaseError
 from convert2qgis.xlsform2qgis.qgis_utils import LoggingSignals, transform_bounding_box
 from convert2qgis.xlsform2qgis.type_defs import ConverterSettings, WeakXlsformSettings
 from convert2qgis.xlsform2qgis.xlsform2qgis import (
-    XlsformConverterError,
     convert_xlsform_to_qgis_project,
 )
 from qgis.core import (
@@ -330,7 +330,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
                 # NOTE: set to a temporary file so one can inspect and debug the generated JSON
                 json_filename="/tmp/xlsform.json",
             )
-        except (FileNotFoundError, XlsformConverterError) as err:
+        except (FileNotFoundError, Convert2QgisBaseError) as err:
             feedback.reportError(str(err), True)
 
             return
