@@ -1,2 +1,2 @@
-# NOTE `xlsform2qgis` version should be defined in the `*.tar.gz` format, not `git+https://` to make `wheel` happy
-xlsform2qgis @ https://github.com/opengisch/xlsform2qgis/archive/7fd7d726cab6636bfb650d1fcd9e1b8c2cc589af.tar.gz
+# NOTE `convert2qgis` version should be defined in the `*.tar.gz` format, not `git+https://` to make `wheel` happy
+convert2qgis @ https://github.com/opengisch/convert2qgis/archive/6e9e16d3fe2a2087dbe69c3554e93572b4e55fdb.tar.gz
