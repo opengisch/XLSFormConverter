@@ -1,5 +1,6 @@
 import os
 from collections.abc import Callable
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 
@@ -29,16 +30,13 @@ from qgis.core import (
 from qgis.PyQt.QtCore import QCoreApplication, QEventLoop
 from qgis.PyQt.QtGui import QIcon
 
-QFIELDSYNC_AVAILABLE = True
-try:
-    from plugins.qfieldsync.core.cloud_api import (
-        CloudException,
-        CloudNetworkAccessManager,
-    )
+QFIELDSYNC_AVAILABLE = find_spec("plugins.qfieldsync") is not None
+
+if QFIELDSYNC_AVAILABLE:
+    from plugins.qfieldsync.core.cloud_api import CloudNetworkAccessManager
     from plugins.qfieldsync.core.cloud_project import CloudProject
     from plugins.qfieldsync.core.cloud_transferrer import CloudTransferrer
-except ImportError:
-    QFIELDSYNC_AVAILABLE = False
+    from plugins.qfieldsync.core.errors import QFieldSyncError
 
 
 def decorator_connect_logging(func):
@@ -380,23 +378,13 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         project_file = qgis_project_files[0]
 
         nam = CloudNetworkAccessManager()
-        cfg = nam.auth()
-        username = cfg.config("username")
-        password = cfg.config("password")
-        if not nam.has_token():
-            feedback.pushInfo(self.tr("Logging into QFieldCloud"))
 
-            if not username or not password:
-                feedback.pushWarning(
-                    self.tr(
-                        "Please log into QFieldCloud within QFieldSync prior to running this algorithm when proceeding with uploading the generated project to QFieldCloud."
-                    )
-                )
-                return
+        if not nam.user_details:
+            feedback.pushInfo(self.tr("Logging into QFieldCloud"))
 
             loop = QEventLoop()
             nam.login_finished.connect(loop.quit)
-            nam.login(username, password)
+            nam.auto_login_attempt()
             loop.exec()
 
         if not nam.has_token():
@@ -410,6 +398,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo(
             self.tr("Retrieving the list of cloud projects from QFieldCloud")
         )
+
         loop = QEventLoop()
         nam.projects_cache.projects_updated.connect(loop.quit)
         nam.projects_cache.projects_error.connect(loop.quit)
@@ -422,13 +411,17 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
             os.path.splitext(os.path.basename(project_file))[0]
         )
         reply = nam.create_project(
-            project_title, username, "Created by XLSForm Converter", True
+            project_title,
+            nam.user_details["username"],
+            "Created by XLSForm Converter",
+            True,
         )
         reply.finished.connect(loop.quit)
         loop.exec()
+
         try:
             payload = nam.json_object(reply)
-        except CloudException as err:
+        except QFieldSyncError as err:
             feedback.pushWarning(
                 self.tr("QFieldCloud rejected project creation:\n{}").format(err)
             )
