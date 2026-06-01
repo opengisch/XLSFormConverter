@@ -155,13 +155,14 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-        self.addParameter(
-            QgsProcessingParameterBoolean(
-                self.UPLOAD_TO_QFIELDCLOUD,
-                self.tr("Upload generated project to QFieldCloud"),
-                defaultValue=False,
+        if QFIELDSYNC_AVAILABLE:
+            self.addParameter(
+                QgsProcessingParameterBoolean(
+                    self.UPLOAD_TO_QFIELDCLOUD,
+                    self.tr("Upload generated project to QFieldCloud"),
+                    defaultValue=False,
+                )
             )
-        )
 
         param = QgsProcessingParameterCrs(
             self.CRS,
