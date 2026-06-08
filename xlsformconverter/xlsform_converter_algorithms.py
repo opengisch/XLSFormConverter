@@ -127,7 +127,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterString(
             self.LANGUAGE,
-            self.tr("Project language (comma-separated values)"),
+            self.tr("Project language(s) (comma-separated values)"),
             optional=True,
         )
         param.setHelp(
@@ -246,7 +246,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         converter_settings["use_groups_as_tabs"] = groups_as_tabs
 
         converter_settings["basemap_url"] = self._get_basemap_url(basemap_index)
-        converter_settings["language"] = language
+        converter_settings["languages"] = language
 
         if project_crs and project_crs.isValid():
             converter_settings["crs"] = project_crs.authid()
