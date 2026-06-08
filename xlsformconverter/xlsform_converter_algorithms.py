@@ -69,7 +69,8 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
 
     INPUT = "INPUT"
     TITLE = "TITLE"
-    LANGUAGE = "LANGUAGE"
+    # NOTE Parameter is in singular form, as we could only set one language historically. Didn't rename to plural to avoid breaking existing projects that might have the parameter set in their settings.
+    LANGUAGES = "LANGUAGE"
     BASEMAP = "BASEMAP"
     GROUPS_AS_TABS = "GROUPS_AS_TABS"
     UPLOAD_TO_QFIELDCLOUD = "UPLOAD_TO_QFIELDCLOUD"
@@ -126,7 +127,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(param)
 
         param = QgsProcessingParameterString(
-            self.LANGUAGE,
+            self.LANGUAGES,
             self.tr("Project language(s) (comma-separated values)"),
             optional=True,
         )
@@ -220,7 +221,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         xlsform_filename = self.parameterAsString(parameters, self.INPUT, context)
         survey_features = self.parameterAsSource(parameters, self.FEATURES, context)
         project_title = self.parameterAsString(parameters, self.TITLE, context)
-        language = self.parameterAsString(parameters, self.LANGUAGE, context)
+        languages = self.parameterAsString(parameters, self.LANGUAGES, context)
         project_crs = self.parameterAsCrs(parameters, self.CRS, context)
         project_extent = self.parameterAsExtent(
             parameters, self.EXTENT, context, project_crs
@@ -246,7 +247,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         converter_settings["use_groups_as_tabs"] = groups_as_tabs
 
         converter_settings["basemap_url"] = self._get_basemap_url(basemap_index)
-        converter_settings["languages"] = language
+        converter_settings["languages"] = languages
 
         if project_crs and project_crs.isValid():
             converter_settings["crs"] = project_crs.authid()
