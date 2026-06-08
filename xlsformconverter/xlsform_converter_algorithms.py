@@ -77,6 +77,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
     CRS = "CRS"
     EXTENT = "EXTENT"
     FEATURES = "FEATURES"
+    SHOW_UNIQUE_LABEL = "SHOW_UNIQUE_LABEL"
     OUTPUT = "OUTPUT"
 
     def tr(self, string):
@@ -194,6 +195,16 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         param.setFlags(param.flags() | Qgis.ProcessingParameterFlag.Advanced)
         self.addParameter(param)
 
+        param = QgsProcessingParameterBoolean(
+            self.SHOW_UNIQUE_LABEL,
+            self.tr(
+                "Append suffixes on duplicates to ensure uniqueness of the field labels"
+            ),
+            defaultValue=True,
+        )
+        param.setFlags(param.flags() | Qgis.ProcessingParameterFlag.Advanced)
+        self.addParameter(param)
+
         self.addParameter(
             QgsProcessingParameterFolderDestination(
                 self.OUTPUT,
@@ -233,6 +244,9 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         upload_to_qfieldcloud = self.parameterAsBoolean(
             parameters, self.UPLOAD_TO_QFIELDCLOUD, context
         )
+        show_unique_label = self.parameterAsBoolean(
+            parameters, self.SHOW_UNIQUE_LABEL, context
+        )
         output_dir = self.parameterAsString(parameters, self.OUTPUT, context)
 
         # Prepare settings
@@ -248,6 +262,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
 
         converter_settings["basemap_url"] = self._get_basemap_url(basemap_index)
         converter_settings["languages"] = languages
+        converter_settings["show_unique_label"] = show_unique_label
 
         if project_crs and project_crs.isValid():
             converter_settings["crs"] = project_crs.authid()
