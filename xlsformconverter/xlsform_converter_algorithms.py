@@ -81,6 +81,11 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
     OUTPUT = "OUTPUT"
     OPEN_PROJECT_AFTER_CONVERSION = "OPEN_PROJECT_AFTER_CONVERSION"
 
+    # Temporary storage of parameters for use in `postProcessAlgorithm`
+    _output_dir: str = ""
+    _should_open_project_after_conversion: bool = False
+    _should_upload_to_qfieldcloud: bool = False
+
     def tr(self, string):
         return QCoreApplication.translate("Processing", string)
 
@@ -249,16 +254,19 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         groups_as_tabs = self.parameterAsBoolean(
             parameters, self.GROUPS_AS_TABS, context
         )
-        upload_to_qfieldcloud = self.parameterAsBoolean(
-            parameters, self.UPLOAD_TO_QFIELDCLOUD, context
-        )
         show_unique_label = self.parameterAsBoolean(
             parameters, self.SHOW_UNIQUE_LABEL, context
         )
-        output_dir = self.parameterAsString(parameters, self.OUTPUT, context)
-        open_project_after_conversion = self.parameterAsBoolean(
+
+        self._output_dir = self.parameterAsString(parameters, self.OUTPUT, context)
+        self._should_open_project_after_conversion = self.parameterAsBoolean(
             parameters, self.OPEN_PROJECT_AFTER_CONVERSION, context
         )
+
+        if QFIELDSYNC_AVAILABLE:
+            self._should_upload_to_qfieldcloud = self.parameterAsBoolean(
+                parameters, self.UPLOAD_TO_QFIELDCLOUD, context
+            )
 
         # Prepare settings
         xlsform_settings: WeakXlsformSettings = {}
@@ -331,17 +339,35 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
 
         self._convert_project(
             xlsform_filename,
-            output_dir,
+            self._output_dir,
             converter_settings,
             survey_features,
             feedback,
-            open_project_after_conversion,
         )
 
-        if upload_to_qfieldcloud:
-            self._upload_to_qfieldcloud(output_dir, feedback)
+        return {self.OUTPUT: self._output_dir}
 
-        return {self.OUTPUT: output_dir}
+    def postProcessAlgorithm(
+        self, context: QgsProcessingContext, feedback: QgsProcessingFeedback | None
+    ) -> dict[str, Any]:
+        assert feedback
+
+        result: dict[str, Any] = {}
+
+        if self._should_open_project_after_conversion:
+            if not self._open_project_after_conversion(feedback):
+                feedback.pushWarning(
+                    self.tr(
+                        "Failed to open the generated project after conversion, please try opening it manually from {}"
+                    ).format(self._output_dir)
+                )
+
+                return result
+
+        if self._should_upload_to_qfieldcloud:
+            self._upload_to_qfieldcloud(self._output_dir, feedback)
+
+        return result
 
     def _convert_project(
         self,
@@ -350,7 +376,6 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         converter_settings: ConverterSettings,
         survey_features: QgsProcessingFeatureSource | None,
         feedback: QgsProcessingFeedback,
-        open_project_after_conversion: bool,
     ) -> None:
         try:
             project = convert_xlsform_to_qgis_project(
@@ -377,37 +402,6 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
                 full_filename
             ),
         )
-
-        if open_project_after_conversion:
-            global_project = QgsProject.instance()
-
-            if not global_project:
-                feedback.pushWarning(
-                    self.tr(
-                        "No global QGIS project instance found, cannot open the generated project after conversion."
-                    )
-                )
-
-                return
-
-            if global_project.isDirty():
-                feedback.pushWarning(
-                    self.tr(
-                        "Current project has unsaved changes, cannot open the generated project after conversion without losing those changes. "
-                        "Please save the current project before running the conversion if you want the generated project to be opened automatically after conversion."
-                    )
-                )
-
-                return
-
-            global_project.clear()
-
-            if not global_project.read(str(full_filename)):
-                feedback.pushWarning(
-                    self.tr(
-                        "Failed to open the generated project after conversion, please try opening it manually from {}"
-                    ).format(full_filename)
-                )
 
     def _upload_to_qfieldcloud(
         self, output_dir: str | Path, feedback: QgsProcessingFeedback
@@ -498,6 +492,47 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
         cloud_transferrer.finished.connect(loop.quit)
         cloud_transferrer.sync(list(cloud_project.files_to_sync), [], [], [])
         loop.exec()
+
+    def _open_project_after_conversion(self, feedback: QgsProcessingFeedback) -> bool:
+        qgs_project_files = list(Path(self._output_dir).glob("*.qg[sz]"))
+
+        if not qgs_project_files:
+            feedback.pushWarning(
+                self.tr(
+                    "No QGIS project file found in the output directory after conversion, cannot open the generated project automatically."
+                )
+            )
+
+            return False
+
+        full_filename = qgs_project_files[0]
+        global_project = QgsProject.instance()
+
+        if not global_project:
+            feedback.pushWarning(
+                self.tr(
+                    "No global QGIS project instance found, cannot open the generated project after conversion."
+                )
+            )
+
+            return False
+
+        if global_project.isDirty():
+            feedback.pushWarning(
+                self.tr(
+                    "Current project has unsaved changes, cannot open the generated project after conversion without losing those changes. "
+                    "Please save the current project before running the conversion if you want the generated project to be opened automatically after conversion."
+                )
+            )
+
+            return False
+
+        global_project.clear()
+
+        if not global_project.read(str(full_filename)):
+            return False
+
+        return True
 
     def _rect_to_coords(self, rect: QgsRectangle) -> str:
         return f"{rect.xMinimum()}, {rect.yMinimum()}, {rect.xMaximum()}, {rect.yMaximum()}"
