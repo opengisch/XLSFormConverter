@@ -385,7 +385,7 @@ class XlsformConverterAlgorithm(QgsProcessingAlgorithm):
                 skip_failed_expressions=True,
                 survey_features=survey_features,
                 # NOTE: set to a temporary file so one can inspect and debug the generated JSON
-                json_filename="/tmp/xlsform.json",
+                # json_filename="/tmp/xlsform.json",
             )
         except (FileNotFoundError, Convert2QgisBaseError) as err:
             feedback.reportError(str(err), True)
