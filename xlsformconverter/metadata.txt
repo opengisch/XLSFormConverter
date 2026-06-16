@@ -21,6 +21,7 @@ repository=https://github.com/opengisch/XLSFormConverter
 homepage=https://github.com/opengisch/XLSFormConverter
 
 changelog=
+    v2.0.0 - Completely rewritten xlsform parsing backend with wider expression support; add an option to open the project and to make labels unique; and many more!
     v1.1.1 - Tiny fixes
     v1.1.0 - Implement support for select_{one,multiple}_from_file
     v1.0.3 - Improve automated label detection and make project language match case insensitive
