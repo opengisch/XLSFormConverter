@@ -19,7 +19,6 @@ ENV UV_PROJECT_ENVIRONMENT=/venv
 WORKDIR /usr/src
 
 COPY requirements.txt /usr/src
-COPY pyproject.toml /usr/src
 
 RUN uv venv --system-site-packages
 RUN uv add -r /usr/src/requirements.txt
