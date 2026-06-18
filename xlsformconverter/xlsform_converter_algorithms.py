@@ -30,7 +30,10 @@ from qgis.core import (
 from qgis.PyQt.QtCore import QCoreApplication, QEventLoop
 from qgis.PyQt.QtGui import QIcon
 
-QFIELDSYNC_AVAILABLE = find_spec("plugins.qfieldsync") is not None
+try:
+    QFIELDSYNC_AVAILABLE = find_spec("plugins.qfieldsync") is not None
+except ModuleNotFoundError:
+    QFIELDSYNC_AVAILABLE = False
 
 if QFIELDSYNC_AVAILABLE:
     from plugins.qfieldsync.core.cloud_api import CloudNetworkAccessManager
