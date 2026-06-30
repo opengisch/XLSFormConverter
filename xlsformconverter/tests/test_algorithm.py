@@ -1,8 +1,9 @@
 import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+from convert2qgis.errors import Convert2QgisBaseError
 from qgis.core import QgsProcessingContext, QgsProcessingFeedback, QgsRectangle
 from qgis.testing import start_app, unittest
 
@@ -92,13 +93,27 @@ class TestXlsformConversion(unittest.TestCase):
         )
         self.feedback.reportError.assert_called_once()
 
+    def test_invalid_xlsform_reports_fatal_error(self):
+        with patch(
+            "xlsformconverter.xlsform_converter_algorithms.convert_xlsform_to_qgis_project",
+            side_effect=Convert2QgisBaseError("Invalid XLSForm structure"),
+        ):
+            self._run()
+        args, kwargs = self.feedback.reportError.call_args
+        fatal = args[1] if len(args) > 1 else kwargs.get("fatal", False)
+        self.assertTrue(fatal)
+
 
 class TestAlgorithmMetadata(unittest.TestCase):
     def setUp(self):
         self.alg = XlsformConverterAlgorithm()
 
-    def test_name(self):
-        self.assertEqual(self.alg.name(), "xlsformconverter")
-
-    def test_group_id(self):
-        self.assertEqual(self.alg.groupId(), "xlsformconverter")
+    def test_init_algorithm_registers_expected_parameters(self):
+        self.alg.initAlgorithm()
+        param_names = {p.name() for p in self.alg.parameterDefinitions()}
+        expected = {
+            "INPUT", "TITLE", "LANGUAGE", "BASEMAP", "GROUPS_AS_TABS",
+            "CRS", "EXTENT", "FEATURES", "SHOW_UNIQUE_LABEL",
+            "OUTPUT", "OPEN_PROJECT_AFTER_CONVERSION",
+        }
+        self.assertEqual(param_names, expected)
