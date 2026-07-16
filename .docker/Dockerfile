@@ -1,5 +1,5 @@
-ARG QGIS_TEST_VERSION=latest
-FROM qgis/qgis:${QGIS_TEST_VERSION}
+ARG QGIS_IMAGE_TAG=latest
+FROM qgis/qgis:${QGIS_IMAGE_TAG}
 
 RUN apt update \
     && apt install -y \

@@ -9,8 +9,8 @@ from qgis.testing import start_app, unittest
 
 start_app()
 
-from xlsformconverter.xlsform_converter_algorithms import XlsformConverterAlgorithm
-from xlsformconverter.tests.utilities import data_folder
+from xlsformconverter.xlsform_converter_algorithms import XlsformConverterAlgorithm  # noqa: E402
+from xlsformconverter.tests.utilities import data_folder  # noqa: E402
 
 BUILDINGS_XLS = Path(data_folder()) / "buildings.xls"
 
@@ -112,8 +112,16 @@ class TestAlgorithmMetadata(unittest.TestCase):
         self.alg.initAlgorithm()
         param_names = {p.name() for p in self.alg.parameterDefinitions()}
         expected = {
-            "INPUT", "TITLE", "LANGUAGE", "BASEMAP", "GROUPS_AS_TABS",
-            "CRS", "EXTENT", "FEATURES", "SHOW_UNIQUE_LABEL",
-            "OUTPUT", "OPEN_PROJECT_AFTER_CONVERSION",
+            "INPUT",
+            "TITLE",
+            "LANGUAGE",
+            "BASEMAP",
+            "GROUPS_AS_TABS",
+            "CRS",
+            "EXTENT",
+            "FEATURES",
+            "SHOW_UNIQUE_LABEL",
+            "OUTPUT",
+            "OPEN_PROJECT_AFTER_CONVERSION",
         }
         self.assertEqual(param_names, expected)
