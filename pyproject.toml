@@ -1,0 +1,22 @@
+[project]
+name = "xlsformconverter"
+description = "A QGIS plugin to convert XLSForm files to QGIS projects."
+version = "1.0"
+authors = [
+    { name = "OPENGIS.ch", email = "info@opengis.ch" }
+]
+requires-python = ">=3.9"
+
+[project.urls]
+homepage = "https://github.com/opengisch/xlsformconverter"
+repository = "https://github.com/opengisch/xlsformconverter"
+tracker = "https://github.com/opengisch/xlsformconverter/issues"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4.4",
+    "pytest-cov>=4.1.0",
+]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }

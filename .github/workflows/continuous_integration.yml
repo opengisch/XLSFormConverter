@@ -14,6 +14,23 @@ on:
   workflow_dispatch:
 
 jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        qgis_version: ["3.40", "3.44", "ltr", "stable"]
+    env:
+      QGIS_IMAGE_TAG: ${{ matrix.qgis_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          docker build -f .docker/Dockerfile --build-arg QGIS_IMAGE_TAG=$QGIS_IMAGE_TAG -t xlsformconverter-test .
+          docker run --rm xlsformconverter-test .docker/xvfb-pytest
+
   release:
     runs-on: ubuntu-24.04
     if: ${{ github.event_name == 'release' }}
